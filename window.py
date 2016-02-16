@@ -5,6 +5,8 @@ import sys
 from PyQt4.QtGui import *
 import exifread
 import re
+import glob
+import os
 
 # Create an PyQT4 application object.
 a = QApplication(sys.argv)
@@ -19,17 +21,33 @@ w.resize(320, 240)
 w.setWindowTitle("Hello World!")
 
 # Get filename using QFileDialog
-filename = QFileDialog.getOpenFileName(w, 'Open File', '/')
+# filename = QFileDialog.getOpenFileName(w, 'Open File', '/')
 # print(filename)
+
+dir = QFileDialog.getExistingDirectory(w, 'Open directory')
+# print(dir)
+
+# gets all files in directory with given extension. Each filename contains directory name
+files = glob.glob(os.path.join(dir, '*.jpg'))
+
+# list all files in directory
+# for file in files:
+#     print(file)
+
+filename = files[0]
+print(filename)
+# sys.exit()
 
 f = open(filename, 'rb')
 tags = exifread.process_file(f)
 
-rotationTag = tags['Image Orientation']
+try:
+    rotationTag = tags['Image Orientation']
+    print(rotationTag)
 
-print(rotationTag)
-
-rotation = re.search('[0-9]+', str(rotationTag)).group(0)
+    rotation = re.search('[0-9]+', str(rotationTag)).group(0)
+except KeyError:
+    rotation = 0
 
 label = QLabel(w)
 pixmap = QPixmap(filename)
