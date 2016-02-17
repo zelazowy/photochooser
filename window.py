@@ -1,18 +1,18 @@
-#! /usr/bin/env python
-# -*- coding: utf-8 -*-
-#
 import sys
 from PyQt4 import QtGui, QtCore
 import exifread
 import re
 import glob
 import os
+import shutil
 
 
 class Photochooser(QtGui.QWidget):
     dir = ''
+    copyDir = ''
     files = ''
     currentFileIndex = 0
+    currentFile = ''
     label = None
 
     def __init__(self):
@@ -22,21 +22,22 @@ class Photochooser(QtGui.QWidget):
 
         self.initFiles()
 
-        filename = self.getFirstFile()
-        self.showFile(filename)
+        self.showFile(self.getFirstFile())
 
     def initFiles(self):
         while True:
-            self.files = glob.glob(os.path.join(self.openDir(), '*.jpg'))
+            currentDir = self.openDir()
+            self.files = glob.glob(os.path.join(currentDir, '*.jpg'))
 
-            try:
-                filename = self.files[0]
+            # if dir contains any images then break, continue choosing dir otherwise
+            if 0 < len(self.files):
+                self.copyDir = os.path.join(currentDir, 'copy')
+                print(self.copyDir)
                 break
-            except IndexError:
-                pass
 
     def showFile(self, filename):
-        self.repaint()
+        self.currentFile = filename
+
         f = open(filename, 'rb')
         tags = exifread.process_file(f)
 
@@ -48,25 +49,21 @@ class Photochooser(QtGui.QWidget):
         except:
             rotation = 0
 
-
-        pixmap = QtGui.QPixmap(filename)
-        pixmap = pixmap.scaledToWidth(1200)
-
         transform = QtGui.QTransform()
         transform.rotate(float(rotation))
 
+        pixmap = QtGui.QPixmap(filename)
+        pixmap = pixmap.scaledToWidth(1200)
         pixmap = pixmap.transformed(transform)
 
         self.label.setPixmap(pixmap)
-
         self.resize(min(pixmap.width(), 1200), min(pixmap.height(), 800))
 
         # buttons
-        # btn = QtGui.QPushButton('Hello World!', self)
-        # btn.setToolTip('Elo')
-        # btn.clicked.connect(exit)
-        # btn.resize(btn.sizeHint())
-        # btn.move(80, 100)
+        btn = QtGui.QPushButton('Copy!', self)
+        btn.clicked.connect(lambda: self.copyPhoto())
+        btn.resize(btn.sizeHint())
+        btn.move(5, 5)
 
         # Show window
         self.show()
@@ -101,14 +98,20 @@ class Photochooser(QtGui.QWidget):
     def keyPressEvent(self, e):
         if e.key() == QtCore.Qt.Key_Right:
             nextFile = self.getNextFile()
-            print(nextFile)
+            # print(nextFile)
             if False != nextFile:
                 self.showFile(nextFile)
         elif e.key() == QtCore.Qt.Key_Left:
             prevFile = self.getPrevFile()
-            print(prevFile)
+            # print(prevFile)
             if False != prevFile:
                 self.showFile(prevFile)
+
+    def copyPhoto(self):
+        if not os.path.exists(self.copyDir):
+            os.makedirs(self.copyDir)
+
+        shutil.copy2(self.currentFile, self.copyDir)
 
 # Create an PyQT4 application object.
 a = QtGui.QApplication(sys.argv)
@@ -117,10 +120,6 @@ a = QtGui.QApplication(sys.argv)
 w = Photochooser()
 
 # Set window title
-w.setWindowTitle("Hello World!")
-
-
-
-
+w.setWindowTitle("Photo Chooser")
 
 sys.exit(a.exec_())
