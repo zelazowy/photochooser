@@ -34,7 +34,6 @@ class Photochooser(QtGui.QWidget):
         label = QtGui.QLabel(self)
         pixmap = QtGui.QPixmap(filename)
         pixmap = pixmap.scaledToWidth(1200)
-        # pixmap = pixmap.transformed(QTransform.rotate(rotation))
 
         transform = QtGui.QTransform()
         transform.rotate(float(rotation))
@@ -70,14 +69,17 @@ class Photochooser(QtGui.QWidget):
     def openDir(self):
         return QtGui.QFileDialog.getExistingDirectory()
 
+    def keyPressEvent(self, e):
+        if e.key() == QtCore.Qt.Key_Right:
+            print('R')
+        elif e.key() == QtCore.Qt.Key_Left:
+            print('L')
+
 # Create an PyQT4 application object.
 a = QtGui.QApplication(sys.argv)
 
 # The QWidget widget is the base class of all user interface objects in PyQt4.
 w = Photochooser()
-
-# Set window size.
-w.resize(320, 240)
 
 # Set window title
 w.setWindowTitle("Hello World!")
