@@ -12,14 +12,31 @@ import os
 class Photochooser(QtGui.QWidget):
     dir = ''
     files = ''
+    currentFileIndex = 0
+    label = None
 
     def __init__(self):
         super(Photochooser, self).__init__()
 
+        self.label = QtGui.QLabel(self)
+
+        self.initFiles()
+
         filename = self.getFirstFile()
         self.showFile(filename)
 
+    def initFiles(self):
+        while True:
+            self.files = glob.glob(os.path.join(self.openDir(), '*.jpg'))
+
+            try:
+                filename = self.files[0]
+                break
+            except IndexError:
+                pass
+
     def showFile(self, filename):
+        self.repaint()
         f = open(filename, 'rb')
         tags = exifread.process_file(f)
 
@@ -31,7 +48,7 @@ class Photochooser(QtGui.QWidget):
         except:
             rotation = 0
 
-        label = QtGui.QLabel(self)
+
         pixmap = QtGui.QPixmap(filename)
         pixmap = pixmap.scaledToWidth(1200)
 
@@ -40,7 +57,7 @@ class Photochooser(QtGui.QWidget):
 
         pixmap = pixmap.transformed(transform)
 
-        label.setPixmap(pixmap)
+        self.label.setPixmap(pixmap)
 
         self.resize(min(pixmap.width(), 1200), min(pixmap.height(), 800))
 
@@ -55,25 +72,43 @@ class Photochooser(QtGui.QWidget):
         self.show()
 
     def getFirstFile(self):
-        while True:
-            self.files = glob.glob(os.path.join(self.openDir(), '*.jpg'))
+        return self.files[0]
 
-            try:
-                filename = self.files[0]
-                break
-            except IndexError:
-                pass
+    def getNextFile(self):
+        try:
+            nextFile = self.files[self.currentFileIndex + 1]
+            self.currentFileIndex += 1
 
-        return filename
+            return nextFile
+        except:
+            return False
+
+    def getPrevFile(self):
+        if 0 >= self.currentFileIndex - 1:
+            return False
+
+        try:
+            prevFile = self.files[self.currentFileIndex - 1]
+            self.currentFileIndex -= 1
+
+            return prevFile
+        except:
+            return False
 
     def openDir(self):
         return QtGui.QFileDialog.getExistingDirectory()
 
     def keyPressEvent(self, e):
         if e.key() == QtCore.Qt.Key_Right:
-            print('R')
+            nextFile = self.getNextFile()
+            print(nextFile)
+            if False != nextFile:
+                self.showFile(nextFile)
         elif e.key() == QtCore.Qt.Key_Left:
-            print('L')
+            prevFile = self.getPrevFile()
+            print(prevFile)
+            if False != prevFile:
+                self.showFile(prevFile)
 
 # Create an PyQT4 application object.
 a = QtGui.QApplication(sys.argv)
