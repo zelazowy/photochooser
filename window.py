@@ -14,12 +14,14 @@ class Photochooser(QtGui.QWidget):
     currentFileIndex = 0
     currentFile = ''
     label = None
+    copyBtn = None
 
     def __init__(self):
         super(Photochooser, self).__init__()
 
         self.label = QtGui.QLabel(self)
 
+        self.initButton()
         self.initFiles()
 
         self.showFile(self.getFirstFile())
@@ -35,35 +37,40 @@ class Photochooser(QtGui.QWidget):
                 print(self.copyDir)
                 break
 
+    def initButton(self):
+        # buttons
+        self.copyBtn = QtGui.QPushButton('Copy!', self)
+        self.copyBtn.clicked.connect(lambda: self.copyPhoto())
+        self.copyBtn.resize(self.copyBtn.sizeHint())
+        self.copyBtn.move(5, 5)
+
     def showFile(self, filename):
+        self.copyBtn.setText('Copy!')
+
         self.currentFile = filename
 
         f = open(filename, 'rb')
-        tags = exifread.process_file(f)
+
+        pixmap = QtGui.QPixmap(filename)
+        pixmap = pixmap.scaledToWidth(1200)
 
         try:
+            tags = exifread.process_file(f)
             rotationTag = tags['Image Orientation']
             print(rotationTag)
 
             rotation = re.search('[0-9]+', str(rotationTag)).group(0)
+
+            transform = QtGui.QTransform()
+            transform.rotate(float(rotation))
+
+
+            pixmap = pixmap.transformed(transform)
         except:
-            rotation = 0
-
-        transform = QtGui.QTransform()
-        transform.rotate(float(rotation))
-
-        pixmap = QtGui.QPixmap(filename)
-        pixmap = pixmap.scaledToWidth(1200)
-        pixmap = pixmap.transformed(transform)
+            pass
 
         self.label.setPixmap(pixmap)
         self.resize(min(pixmap.width(), 1200), min(pixmap.height(), 800))
-
-        # buttons
-        btn = QtGui.QPushButton('Copy!', self)
-        btn.clicked.connect(lambda: self.copyPhoto())
-        btn.resize(btn.sizeHint())
-        btn.move(5, 5)
 
         # Show window
         self.show()
@@ -106,12 +113,16 @@ class Photochooser(QtGui.QWidget):
             # print(prevFile)
             if False != prevFile:
                 self.showFile(prevFile)
+        elif e.key() == QtCore.Qt.Key_C:
+            self.copyPhoto()
 
     def copyPhoto(self):
         if not os.path.exists(self.copyDir):
             os.makedirs(self.copyDir)
 
         shutil.copy2(self.currentFile, self.copyDir)
+
+        self.copyBtn.setText('Copied')
 
 # Create an PyQT4 application object.
 a = QtGui.QApplication(sys.argv)
