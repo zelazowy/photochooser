@@ -8,54 +8,87 @@ import shutil
 
 
 class Photochooser(QtGui.QWidget):
+    WIDTH = 1200
+    HEIGHT = 800
+
     dir = ''
     copyDir = ''
-    files = ''
+    deleteDir = ''
+    files = []
     currentFileIndex = 0
     currentFile = ''
     label = None
+
+    # buttons
     copyBtn = None
+    deleteBtn = None
+    softDeleteBtn = None
 
     def __init__(self):
         super(Photochooser, self).__init__()
 
         self.label = QtGui.QLabel(self)
 
-        self.initButton()
+        self.initButtons()
         self.initFiles()
+
+        print(self.files)
 
         self.showFile(self.getFirstFile())
 
     def initFiles(self):
         while True:
             currentDir = self.openDir()
-            self.files = glob.glob(os.path.join(currentDir, '*.jpg'))
+            files = glob.glob(os.path.join(currentDir, '*.jpg'))
 
             # if dir contains any images then break, continue choosing dir otherwise
-            if 0 < len(self.files):
+            if 0 < len(files):
+                self.files = dict(zip(range(0, len(files)), files))
                 self.copyDir = os.path.join(currentDir, 'copy')
+                self.deleteDir = os.path.join(currentDir, 'delete')
                 print(self.copyDir)
                 break
 
-    def initButton(self):
+    def initButtons(self):
         # buttons
         self.copyBtn = QtGui.QPushButton('Copy!', self)
         self.copyBtn.clicked.connect(lambda: self.copyPhoto())
         self.copyBtn.resize(self.copyBtn.sizeHint())
         self.copyBtn.move(5, 5)
 
-        # prevents button from getting ficused, required for arrow support in windows
+        # prevents button from getting focused, required for arrow support in windows
         self.copyBtn.setFocusPolicy(QtCore.Qt.NoFocus)
 
-    def showFile(self, filename):
+        self.deleteBtn = QtGui.QPushButton('Delete!', self)
+        self.deleteBtn.clicked.connect(lambda: self.deletePhoto())
+        self.deleteBtn.resize(self.deleteBtn.sizeHint())
+        self.deleteBtn.move(5, 30)
+
+        # prevents button from getting focused, required for arrow support in windows
+        self.deleteBtn.setFocusPolicy(QtCore.Qt.NoFocus)
+
+        self.softDeleteBtn = QtGui.QPushButton('Delete?', self)
+        self.softDeleteBtn.clicked.connect(lambda: self.softDeletePhoto())
+        self.softDeleteBtn.resize(self.softDeleteBtn.sizeHint())
+        self.softDeleteBtn.move(5, 55)
+
+        # prevents button from getting focused, required for arrow support in windows
+        self.softDeleteBtn.setFocusPolicy(QtCore.Qt.NoFocus)
+
+    def resetButtons(self):
         self.copyBtn.setText('Copy!')
+        self.deleteBtn.setText('Delete!')
+        self.softDeleteBtn.setText('Delete?')
+
+    def showFile(self, filename):
+        self.resetButtons()
 
         self.currentFile = filename
 
         f = open(filename, 'rb')
 
         pixmap = QtGui.QPixmap(filename)
-        pixmap = pixmap.scaledToWidth(1200)
+        pixmap = pixmap.scaledToWidth(self.WIDTH)
 
         try:
             tags = exifread.process_file(f)
@@ -63,17 +96,14 @@ class Photochooser(QtGui.QWidget):
             # print(rotationTag)
 
             rotation = re.search('[0-9]+', str(rotationTag)).group(0)
-
             transform = QtGui.QTransform()
             transform.rotate(float(rotation))
-
-
             pixmap = pixmap.transformed(transform)
         except:
             pass
 
         self.label.setPixmap(pixmap)
-        self.resize(min(pixmap.width(), 1200), min(pixmap.height(), 800))
+        self.resize(min(pixmap.width(), self.WIDTH), min(pixmap.height(), self.HEIGHT))
 
         # Show window
         self.show()
@@ -118,6 +148,10 @@ class Photochooser(QtGui.QWidget):
                 self.showFile(prevFile)
         elif e.key() == QtCore.Qt.Key_C:
             self.copyPhoto()
+        elif e.key() == QtCore.Qt.Key_D:
+            self.softDeletePhoto()
+        elif e.key() == QtCore.Qt.Key_Backspace:
+            self.deletePhoto()
 
         QtGui.QWidget.keyPressEvent(self, e)
 
@@ -128,6 +162,38 @@ class Photochooser(QtGui.QWidget):
         shutil.copy2(self.currentFile, self.copyDir)
 
         self.copyBtn.setText('Copied')
+
+    def softDeletePhoto(self):
+        if not os.path.exists(self.deleteDir):
+            os.makedirs(self.deleteDir)
+
+        shutil.copy2(self.currentFile, self.deleteDir)
+        self.__afterDeletePhoto()
+
+        self.softDeleteBtn.setText('Deleted')
+
+    def deletePhoto(self):
+        os.remove(self.currentFile)
+        self.__afterDeletePhoto()
+
+        self.deleteBtn.setText('Deleted')
+
+    def __afterDeletePhoto(self):
+        # todo ograc usuwanie plikow z listy, tak, zeby np pobieranie plikow w metodach prev i nextFile działały
+        self.files.pop(self.currentFileIndex)
+
+        print(self.files)
+
+        nextFile = self.getNextFile()
+        if False != nextFile:
+            self.showFile(nextFile)
+        else:
+            prevFile = self.getPrevFile()
+            if False != prevFile:
+                self.showFile(prevFile)
+            else:
+                QtGui.QMessageBox.information(self, 'No files in directory', 'Chosen directory does not contain any images', QtGui.QMessageBox.Ok)
+                exit()
 
 # Create an PyQT4 application object.
 a = QtGui.QApplication(sys.argv)
