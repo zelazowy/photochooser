@@ -44,6 +44,9 @@ class Photochooser(QtGui.QWidget):
         self.copyBtn.resize(self.copyBtn.sizeHint())
         self.copyBtn.move(5, 5)
 
+        # prevents button from getting ficused, required for arrow support in windows
+        self.copyBtn.setFocusPolicy(QtCore.Qt.NoFocus)
+
     def showFile(self, filename):
         self.copyBtn.setText('Copy!')
 
@@ -57,7 +60,7 @@ class Photochooser(QtGui.QWidget):
         try:
             tags = exifread.process_file(f)
             rotationTag = tags['Image Orientation']
-            print(rotationTag)
+            # print(rotationTag)
 
             rotation = re.search('[0-9]+', str(rotationTag)).group(0)
 
@@ -103,18 +106,20 @@ class Photochooser(QtGui.QWidget):
         return QtGui.QFileDialog.getExistingDirectory()
 
     def keyPressEvent(self, e):
-        if e.key() == QtCore.Qt.Key_Right:
+        if e.key() == QtCore.Qt.Key_Right or e.key() == QtCore.Qt.Key_Period:
             nextFile = self.getNextFile()
             # print(nextFile)
             if False != nextFile:
                 self.showFile(nextFile)
-        elif e.key() == QtCore.Qt.Key_Left:
+        elif e.key() == QtCore.Qt.Key_Left or e.key() == QtCore.Qt.Key_Comma:
             prevFile = self.getPrevFile()
             # print(prevFile)
             if False != prevFile:
                 self.showFile(prevFile)
         elif e.key() == QtCore.Qt.Key_C:
             self.copyPhoto()
+
+        QtGui.QWidget.keyPressEvent(self, e)
 
     def copyPhoto(self):
         if not os.path.exists(self.copyDir):
