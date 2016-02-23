@@ -32,18 +32,15 @@ class Photochooser(QtGui.QWidget):
         self.initButtons()
         self.initFiles()
 
-        print(self.files)
-
         self.showFile(self.getFirstFile())
 
     def initFiles(self):
         while True:
             currentDir = self.openDir()
-            files = glob.glob(os.path.join(currentDir, '*.jpg'))
+            self.files = glob.glob(os.path.join(currentDir, '*.jpg'))
 
             # if dir contains any images then break, continue choosing dir otherwise
-            if 0 < len(files):
-                self.files = dict(zip(range(0, len(files)), files))
+            if 0 < len(self.files):
                 self.copyDir = os.path.join(currentDir, 'copy')
                 self.deleteDir = os.path.join(currentDir, 'delete')
                 print(self.copyDir)
@@ -121,7 +118,7 @@ class Photochooser(QtGui.QWidget):
             return False
 
     def getPrevFile(self):
-        if 0 >= self.currentFileIndex - 1:
+        if 0 > self.currentFileIndex - 1:
             return False
 
         try:
@@ -167,7 +164,7 @@ class Photochooser(QtGui.QWidget):
         if not os.path.exists(self.deleteDir):
             os.makedirs(self.deleteDir)
 
-        shutil.copy2(self.currentFile, self.deleteDir)
+        shutil.move(self.currentFile, self.deleteDir)
         self.__afterDeletePhoto()
 
         self.softDeleteBtn.setText('Deleted')
@@ -179,20 +176,29 @@ class Photochooser(QtGui.QWidget):
         self.deleteBtn.setText('Deleted')
 
     def __afterDeletePhoto(self):
-        # todo ograc usuwanie plikow z listy, tak, zeby np pobieranie plikow w metodach prev i nextFile działały
-        self.files.pop(self.currentFileIndex)
-
-        print(self.files)
+        del self.files[self.currentFileIndex]
+        # decrement current file index, because deleting file from list moves all next files one index down
+        # now getting next file would get proper next file
+        self.currentFileIndex -= 1
 
         nextFile = self.getNextFile()
         if False != nextFile:
             self.showFile(nextFile)
         else:
+            # its a little tricky, but to get previous file the index must be incremented so getting prev file wold get proper previous file
+            self.currentFileIndex += 1
+
             prevFile = self.getPrevFile()
             if False != prevFile:
                 self.showFile(prevFile)
             else:
-                QtGui.QMessageBox.information(self, 'No files in directory', 'Chosen directory does not contain any images', QtGui.QMessageBox.Ok)
+                t = QtGui.QMessageBox.information(
+                    self,
+                    'No files in directory',
+                    'Chosen directory does not contain any images',
+                    QtGui.QMessageBox.Ok
+                )
+                print(t)
                 exit()
 
 # Create an PyQT4 application object.
