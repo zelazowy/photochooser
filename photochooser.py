@@ -24,33 +24,44 @@ class Photochooser(QtGui.QWidget):
     delete_btn = None
     soft_delete_btn = None
 
+    # QWidget init
     def __init__(self, screen_width, screen_height):
         super(Photochooser, self).__init__()
 
+        self.setWindowTitle("Photo Chooser")
+
         self.app_width = screen_width
         self.app_height = screen_height
+
+        self.init_app()
+
+    # Initializes application
+    def init_app(self):
         self.label = QtGui.QLabel(self)
 
         self.init_buttons()
         self.init_files()
 
-        self.show_file(self.get_first_file())
+        # show first file
+        self.show_file(self.files[0])
 
         self.showMaximized()
 
+    # Displays directory choose dialog and puts into self.files list all .jpg and .png files
     def init_files(self):
         while True:
-            currentDir = self.open_dir()
-            self.files.extend(glob.glob(os.path.join(currentDir, '*.jpg')))
-            self.files.extend(glob.glob(os.path.join(currentDir, '*.png')))
+            current_dir = QtGui.QFileDialog.getExistingDirectory()
+            self.files.extend(glob.glob(os.path.join(current_dir, '*.jpg')))
+            self.files.extend(glob.glob(os.path.join(current_dir, '*.png')))
 
             # if dir contains any images then break, continue choosing dir otherwise
             if 0 < len(self.files):
-                self.copy_dir = os.path.join(currentDir, 'copy')
-                self.delete_dir = os.path.join(currentDir, 'delete')
+                self.copy_dir = os.path.join(current_dir, 'copy')
+                self.delete_dir = os.path.join(current_dir, 'delete')
                 print(self.copy_dir)
                 break
 
+    # Initializes app buttons: copy, delete and delete?
     def init_buttons(self):
         # buttons
         self.copy_btn = QtGui.QPushButton('Copy!', self)
@@ -77,11 +88,13 @@ class Photochooser(QtGui.QWidget):
         # prevents button from getting focused, required for arrow support in windows
         self.soft_delete_btn.setFocusPolicy(QtCore.Qt.NoFocus)
 
+    # Resets buttons to initial state before every image change
     def reset_buttons(self):
         self.copy_btn.setText('Copy!')
         self.delete_btn.setText('Delete!')
         self.soft_delete_btn.setText('Delete?')
 
+    # Shows file in application: scaled and centered
     def show_file(self, filename):
         self.reset_buttons()
 
@@ -112,6 +125,7 @@ class Photochooser(QtGui.QWidget):
         # Show window
         # self.showMaximized()
 
+    # Computes scale factor for image
     def get_scale_factor(self, img_width, img_height):
         factor_w, factor_h = 1.0, 1.0
         if img_width > self.app_width:
@@ -121,9 +135,7 @@ class Photochooser(QtGui.QWidget):
 
         return min(factor_w, factor_h)
 
-    def get_first_file(self):
-        return self.files[0]
-
+    # Gets next file or False if current was the last one
     def get_next_file(self):
         try:
             next_file = self.files[self.current_file_index + 1]
@@ -131,8 +143,16 @@ class Photochooser(QtGui.QWidget):
 
             return next_file
         except:
+            QtGui.QMessageBox.information(
+                self,
+                'No more files in directory',
+                'That was the last one photo in directory',
+                QtGui.QMessageBox.Ok
+            )
+
             return False
 
+    # Gets previous file or False if current was the first one
     def get_prev_file(self):
         if 0 > self.current_file_index - 1:
             return False
@@ -145,9 +165,7 @@ class Photochooser(QtGui.QWidget):
         except:
             return False
 
-    def open_dir(self):
-        return QtGui.QFileDialog.getExistingDirectory()
-
+    # Decides what to do when specific keys are pressed
     def keyPressEvent(self, e):
         if e.key() == QtCore.Qt.Key_Right or e.key() == QtCore.Qt.Key_Period:
             next_file = self.get_next_file()
@@ -166,6 +184,7 @@ class Photochooser(QtGui.QWidget):
 
         QtGui.QWidget.keyPressEvent(self, e)
 
+    # Copies photo to subdirectory
     def copy_photo(self):
         if not os.path.exists(self.copy_dir):
             os.makedirs(self.copy_dir)
@@ -174,6 +193,7 @@ class Photochooser(QtGui.QWidget):
 
         self.copy_btn.setText('Copied')
 
+    # Moves photo to "delete" directory when user is not certain if she/he wants to delete photo
     def soft_delete_photo(self):
         if not os.path.exists(self.delete_dir):
             os.makedirs(self.delete_dir)
@@ -183,12 +203,15 @@ class Photochooser(QtGui.QWidget):
 
         self.soft_delete_btn.setText('Deleted')
 
+    # Deletes photo
     def delete_photo(self):
         os.remove(self.current_file)
         self.__after_delete_photo()
 
         self.delete_btn.setText('Deleted')
 
+    # Contains all actions that must be triggered after photo was deleted: remove file from self.files list, displays
+    # next or previous photo according to current photo position in list
     def __after_delete_photo(self):
         del self.files[self.current_file_index]
         # decrement current file index, because deleting file from list moves all next files one index down
@@ -196,14 +219,15 @@ class Photochooser(QtGui.QWidget):
         self.current_file_index -= 1
 
         next_file = self.get_next_file()
-        if False != next_file:
+        if next_file:
             self.show_file(next_file)
         else:
-            # its a little tricky, but to get previous file the index must be incremented so getting prev file wold get proper previous file
+            # its a little tricky, but to get previous file the index must be incremented so getting prev file wold get
+            # proper previous file
             self.current_file_index += 1
 
             prev_file = self.get_prev_file()
-            if False != prev_file:
+            if prev_file:
                 self.show_file(prev_file)
             else:
                 QtGui.QMessageBox.information(
@@ -218,13 +242,11 @@ class Photochooser(QtGui.QWidget):
 # Create an PyQT4 application object.
 a = QtGui.QApplication(sys.argv)
 
+# Get screen resolution, useful to calculate scale factor for photos
 screen_resolution = a.desktop().screenGeometry()
 screen_width, screen_height = screen_resolution.width(), screen_resolution.height()
 
-# The QWidget widget is the base class of all user interface objects in PyQt4.
-w = Photochooser(screen_width - 20, screen_height - 50)
-
-# Set window title
-w.setWindowTitle("Photo Chooser")
+# Create new instance of Photochooser class
+w = Photochooser(screen_width, screen_height)
 
 sys.exit(a.exec_())
