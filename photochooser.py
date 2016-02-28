@@ -38,6 +38,7 @@ class Photochooser(QtGui.QWidget):
     # Initializes application
     def init_app(self):
         self.label = QtGui.QLabel(self)
+        self.label.setAlignment(QtCore.Qt.AlignCenter)
 
         self.init_buttons()
         self.init_files()
@@ -46,6 +47,10 @@ class Photochooser(QtGui.QWidget):
         self.show_file(self.files[0])
 
         self.showMaximized()
+
+        # once window is maximized size of label can be set to window size
+        self.label.setFixedWidth(self.width())
+        self.label.setFixedHeight(self.height())
 
     # Displays directory choose dialog and puts into self.files list all .jpg and .png files
     def init_files(self):
@@ -116,24 +121,13 @@ class Photochooser(QtGui.QWidget):
             pass
 
         # resize
-        factor = self.get_scale_factor(pixmap.width(), pixmap.height())
-        pixmap = pixmap.scaledToHeight(pixmap.height() * factor)
+        pixmap = pixmap.scaled(
+            min(self.app_width, pixmap.width()),
+            min(self.app_height, pixmap.height()),
+            QtCore.Qt.KeepAspectRatio
+        )
 
-        self.label.setAlignment(QtCore.Qt.AlignCenter)
         self.label.setPixmap(pixmap)
-
-        # Show window
-        # self.showMaximized()
-
-    # Computes scale factor for image
-    def get_scale_factor(self, img_width, img_height):
-        factor_w, factor_h = 1.0, 1.0
-        if img_width > self.app_width:
-            factor_w = self.app_width / img_width
-        if img_height > self.app_height:
-            factor_h = self.app_height / img_height
-
-        return min(factor_w, factor_h)
 
     # Gets next file or False if current was the last one
     def get_next_file(self):
