@@ -1,7 +1,7 @@
 # photochooser
 photochooser is an application that helps you in photos managing (or images in general).
 Do you ever have to choose photos from holidays to print? Do you have tons of useful, ugly and duplicate photos?
-Now you can use photochooser to help you deal it 8)
+Now you can use photochooser to help you deal it :sunglasses: 
 
 pchotochooser is simple:
   1. choose directory with photos (only .png and .jpg files are supported at the time)
