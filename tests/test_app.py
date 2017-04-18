@@ -1,17 +1,47 @@
-import sys
 import unittest
-from PyQt5 import QtWidgets
-from photochooser.app import App
-
-app = QtWidgets.QApplication(sys.argv)
+from photochooser.app import *
 
 
-class AppTest(unittest.TestCase):
+class ImageManagerTest(unittest.TestCase):
     def setUp(self):
-        self.form = App()
+        self.image_manager = ImageManager()
+        self.image_manager.images = ["1.jpg", "2.jpg", "3.jpg"]
 
-    def test_init(self):
-        self.assertEqual("Photochooser v0.2.0", self.form.windowTitle())
+    def test_change_image_first(self):
+        filename = self.image_manager.change_image("first")
+
+        self.assertEqual("1.jpg", filename)
+
+    def test_change_image_next(self):
+        filename = self.image_manager.change_image("next")
+
+        self.assertEqual("2.jpg", filename)
+
+        self.image_manager.image_index = 1
+        filename = self.image_manager.change_image("next")
+
+        self.assertEqual("3.jpg", filename)
+
+    def test_change_image_prev(self):
+        self.image_manager.image_index = 2
+        filename = self.image_manager.change_image("prev")
+
+        self.assertEqual("2.jpg", filename)
+
+        filename = self.image_manager.change_image("prev")
+
+        self.assertEqual("1.jpg", filename)
+
+    def test_change_image_out_of_range(self):
+        self.image_manager.image_index = 0
+        filename = self.image_manager.change_image("prev")
+
+        self.assertEqual(False, filename)
+
+        self.image_manager.image_index = 2
+        filename = self.image_manager.change_image("next")
+
+        self.assertEqual(False, filename)
 
 
 if __name__ == "__main__":
