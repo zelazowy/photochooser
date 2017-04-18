@@ -1,4 +1,4 @@
-# photochooser https://travis-ci.org/zelazowy/photochooser.svg?branch=master
+# photochooser [![Build Status](https://travis-ci.org/zelazowy/photochooser.svg?branch=master)](https://travis-ci.org/zelazowy/photochooser)
 
 ### requirements
 - Python 3.5.x
