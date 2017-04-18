@@ -1,4 +1,4 @@
-# photochooser
+# photochooser https://travis-ci.org/zelazowy/photochooser.svg?branch=master
 
 ### requirements
 - Python 3.5.x
