@@ -8,6 +8,8 @@ DIR_LAST = "last"
 
 class App(QtWidgets.QMainWindow):
     image_manager = None
+    filename = None
+    action = None
 
     app_width = 0
     app_height = 0
@@ -34,7 +36,8 @@ class App(QtWidgets.QMainWindow):
         self.init_toolbar()
 
         # displays photochooser logo
-        self.display_image("../assets/photochooser_camera.png")
+        self.filename = "../assets/photochooser_camera.png"
+        self.update()
 
         self.image_manager.init_images()
         self.change_image(DIR_FIRST)
@@ -45,30 +48,26 @@ class App(QtWidgets.QMainWindow):
     def init_toolbar(self):
         toolbar = self.addToolBar("tb")
 
-        exitAction = QtWidgets.QAction(QtGui.QIcon("../assets/icon_exit.png"), 'Exit', self)
-        exitAction.setShortcut('Ctrl+Q')
-        exitAction.triggered.connect(QtWidgets.qApp.quit)
-        toolbar.addAction(exitAction)
+        exit_action = QtWidgets.QAction(QtGui.QIcon("../assets/icon_exit.png"), 'Exit', self)
+        exit_action.setShortcut('Ctrl+Q')
+        exit_action.triggered.connect(QtWidgets.qApp.quit)
+        toolbar.addAction(exit_action)
 
-        prevAction = QtWidgets.QAction(QtGui.QIcon("../assets/icon_prev.png"), 'Previous image', self)
-        prevAction.triggered.connect(functools.partial(self.change_image, DIR_PREV))
-        toolbar.addAction(prevAction)
+        prev_action = QtWidgets.QAction(QtGui.QIcon("../assets/icon_prev.png"), 'Prev', self)
+        prev_action.triggered.connect(functools.partial(self.change_image, DIR_PREV))
+        toolbar.addAction(prev_action)
 
-        nextAction = QtWidgets.QAction(QtGui.QIcon("../assets/icon_next.png"), 'Next image', self)
-        nextAction.triggered.connect(functools.partial(self.change_image, DIR_NEXT))
-        toolbar.addAction(nextAction)
+        next_action = QtWidgets.QAction(QtGui.QIcon("../assets/icon_next.png"), 'Next', self)
+        next_action.triggered.connect(functools.partial(self.change_image, DIR_NEXT))
+        toolbar.addAction(next_action)
 
-    def display_image(self, filename):
-        # create pixmap to display image (from given filename)
-        pixmap = QtGui.QPixmap(filename)
-        # resize
-        pixmap = pixmap.scaled(
-            min(self.app_width, pixmap.width()),
-            min(self.app_height, pixmap.height()),
-            QtCore.Qt.KeepAspectRatio
-        )
-        # displays image
-        self.label.setPixmap(pixmap)
+        love_action = QtWidgets.QAction(QtGui.QIcon("../assets/icon_love.png"), 'Love', self)
+        love_action.triggered.connect(self.love_image)
+        toolbar.addAction(love_action)
+
+        delete_action = QtWidgets.QAction(QtGui.QIcon("../assets/icon_trash.png"), 'Next image', self)
+        delete_action.triggered.connect(self.delete_image)
+        toolbar.addAction(delete_action)
 
     def display_statusbar(self, filename):
         self.statusBar().showMessage(
@@ -86,6 +85,45 @@ class App(QtWidgets.QMainWindow):
 
         self.change_image(direction=direction)
 
+    def paintEvent(self, QPaintEvent):
+        if not self.filename:
+            return
+
+        painter = QtGui.QPainter(self)
+
+        pixmap = QtGui.QPixmap(self.filename)
+        # resize
+        pixmap = pixmap.scaled(
+            min(self.app_width, pixmap.width()),
+            min(self.app_height, pixmap.height()),
+            QtCore.Qt.KeepAspectRatio
+        )
+        painter.drawPixmap(self.center_position(pixmap.width(), pixmap.height()), pixmap)
+
+        if self.action == "loved":
+            action_pixmap = QtGui.QPixmap("../assets/loved.png")
+            painter.drawPixmap(self.center_position(action_pixmap.width(), action_pixmap.height()), action_pixmap)
+
+            self.action = None
+        elif self.action == "trashed":
+            action_pixmap = QtGui.QPixmap("../assets/trashed.png")
+            painter.drawPixmap(self.center_position(action_pixmap.width(), action_pixmap.height()), action_pixmap)
+
+            self.action = None
+
+        painter.end()
+
+        self.display_statusbar(self.filename)
+
+    def center_position(self, width, height):
+        rect = QtCore.QRect()
+        rect.setX(self.app_width / 2 - width / 2)
+        rect.setY(self.app_height / 2 - height / 2)
+        rect.setWidth(width)
+        rect.setHeight(height)
+
+        return rect
+
     # controls image change
     def change_image(self, direction):
         filename = self.image_manager.change_image(direction)
@@ -93,8 +131,25 @@ class App(QtWidgets.QMainWindow):
         if not filename:
             return
 
-        self.display_image(filename)
-        self.display_statusbar(filename)
+        # set current filename
+        self.filename = filename
+
+        # update view
+        self.update()
+
+    def love_image(self):
+        # set action
+        self.action = "loved"
+
+        # update view
+        self.update()
+
+    def delete_image(self):
+        # set action
+        self.action = "trashed"
+
+        # update view
+        self.update()
 
 
 class ImageManager(object):
@@ -104,7 +159,8 @@ class ImageManager(object):
     display_index = 1
 
     def init_images(self):
-        self.images = FilesManager().get_images()
+        files_manager = FilesManager()
+        self.images = files_manager.get_images()
         self.count = len(self.images)
 
     def change_image(self, direction):
@@ -132,16 +188,18 @@ class ImageManager(object):
 
 
 class FilesManager(object):
-    @staticmethod
-    def get_images():
-        # opens dialog and gets selected directory name
-        current_dir = QtWidgets.QFileDialog().getExistingDirectory()
-        # gets .jpg and .png files from current_dir
-        files = []
-        files.extend(glob.glob(os.path.join(current_dir, '*.jpg')))
-        files.extend(glob.glob(os.path.join(current_dir, '*.png')))
+    def get_images(self):
+        return self.filter_images(self.open_directory() )
 
-        return files
+    def open_directory(self):
+        return QtWidgets.QFileDialog().getExistingDirectory()
+
+    def filter_images(self, directory):
+        images = []
+        images.extend(glob.glob(os.path.join(directory, '*.jpg')))
+        images.extend(glob.glob(os.path.join(directory, '*.png')))
+
+        return images
 
 
 if __name__ == "__main__":
