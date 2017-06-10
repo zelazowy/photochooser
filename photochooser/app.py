@@ -1,5 +1,5 @@
 from PyQt5 import QtGui, QtWidgets, QtCore
-import sys, glob, os, functools
+import sys, glob, os, functools, exifread, re
 
 DIR_PREV = "prev"
 DIR_NEXT = "next"
@@ -37,7 +37,7 @@ class App(QtWidgets.QMainWindow):
 
         # displays photochooser logo
         self.filename = "../assets/photochooser_camera.png"
-        self.update()
+        self.refresh()
 
         self.image_manager.init_images()
         self.change_image(DIR_FIRST)
@@ -69,19 +69,49 @@ class App(QtWidgets.QMainWindow):
         delete_action.triggered.connect(self.delete_image)
         toolbar.addAction(delete_action)
 
-    def display_statusbar(self, filename):
+    def prepare_image(self, filename):
+        # create pixmap to display image (from given filename)
+        pixmap = QtGui.QPixmap(filename)
+
+        try:
+            with open(filename, 'rb') as file:
+                tags = exifread.process_file(file)
+
+                rotation_tag = tags['Image Orientation']
+                rotation = re.search('[0-9]+', str(rotation_tag)).group(0)
+
+                print(rotation)
+
+                transform = QtGui.QTransform()
+                transform.rotate(float(rotation))
+                pixmap = pixmap.transformed(transform)
+        except:
+            print("ups")
+            pass
+
+        # resize
+        pixmap = pixmap.scaled(
+            min(self.app_width, pixmap.width()),
+            min(self.app_height, pixmap.height()),
+            QtCore.Qt.KeepAspectRatio
+        )
+
+        return pixmap
+
+    def display_statusbar(self):
         self.statusBar().showMessage(
-            "[%d/%d] %s" % (self.image_manager.display_index, self.image_manager.count, filename)
+            "[%d/%d] %s" % (self.image_manager.display_index, self.image_manager.count, self.filename)
         )
 
     # Decides what to do when specific keys are pressed
     def keyPressEvent(self, e):
         key = e.key()
-        direction = DIR_NEXT
         if key == QtCore.Qt.Key_Right:
             direction = DIR_NEXT
         elif key == QtCore.Qt.Key_Left:
             direction = DIR_PREV
+        else:
+            return
 
         self.change_image(direction=direction)
 
@@ -91,13 +121,7 @@ class App(QtWidgets.QMainWindow):
 
         painter = QtGui.QPainter(self)
 
-        pixmap = QtGui.QPixmap(self.filename)
-        # resize
-        pixmap = pixmap.scaled(
-            min(self.app_width, pixmap.width()),
-            min(self.app_height, pixmap.height()),
-            QtCore.Qt.KeepAspectRatio
-        )
+        pixmap = self.prepare_image(self.filename)
         painter.drawPixmap(self.center_position(pixmap.width(), pixmap.height()), pixmap)
 
         if self.action == "loved":
@@ -112,8 +136,6 @@ class App(QtWidgets.QMainWindow):
             self.action = None
 
         painter.end()
-
-        self.display_statusbar(self.filename)
 
     def center_position(self, width, height):
         rect = QtCore.QRect()
@@ -135,20 +157,24 @@ class App(QtWidgets.QMainWindow):
         self.filename = filename
 
         # update view
-        self.update()
+        self.refresh()
 
     def love_image(self):
         # set action
         self.action = "loved"
 
         # update view
-        self.update()
+        self.refresh()
 
     def delete_image(self):
         # set action
         self.action = "trashed"
 
         # update view
+        self.refresh()
+
+    def refresh(self):
+        self.display_statusbar()
         self.update()
 
 
