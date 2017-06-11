@@ -86,13 +86,10 @@ class App(QtWidgets.QMainWindow):
                 rotation_tag = tags['Image Orientation']
                 rotation = re.search('[0-9]+', str(rotation_tag)).group(0)
 
-                print(rotation)
-
                 transform = QtGui.QTransform()
                 transform.rotate(float(rotation))
                 pixmap = pixmap.transformed(transform)
         except:
-            print("ups")
             pass
 
         # resize
