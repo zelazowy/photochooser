@@ -1,5 +1,5 @@
 from PyQt5 import QtGui, QtWidgets, QtCore
-import sys, glob, os, functools, exifread, re
+import sys, glob, os, functools, exifread, re, shutil
 
 DIR_PREV = "prev"
 DIR_NEXT = "next"
@@ -15,6 +15,9 @@ class App(QtWidgets.QMainWindow):
     app_height = 0
 
     label = None
+
+    loved_dir = "favourites"
+    trashed_dir = "trash"
 
     def __init__(self):
         super(App, self).__init__()
@@ -40,6 +43,9 @@ class App(QtWidgets.QMainWindow):
         self.refresh()
 
         self.image_manager.init_images()
+        self.loved_dir = os.path.join(self.image_manager.directory, self.loved_dir)
+        self.trashed_dir = os.path.join(self.image_manager.directory, self.trashed_dir)
+
         self.change_image(DIR_FIRST)
 
         self.activateWindow()
@@ -126,14 +132,14 @@ class App(QtWidgets.QMainWindow):
 
         if self.action == "loved":
             action_pixmap = QtGui.QPixmap("../assets/loved.png")
-            painter.drawPixmap(self.center_position(action_pixmap.width(), action_pixmap.height()), action_pixmap)
-
             self.action = None
+
+            painter.drawPixmap(self.center_position(action_pixmap.width(), action_pixmap.height()), action_pixmap)
         elif self.action == "trashed":
             action_pixmap = QtGui.QPixmap("../assets/trashed.png")
-            painter.drawPixmap(self.center_position(action_pixmap.width(), action_pixmap.height()), action_pixmap)
-
             self.action = None
+
+            painter.drawPixmap(self.center_position(action_pixmap.width(), action_pixmap.height()), action_pixmap)
 
         painter.end()
 
@@ -163,12 +169,24 @@ class App(QtWidgets.QMainWindow):
         # set action
         self.action = "loved"
 
+        # mark image as loved
+        if not os.path.exists(self.loved_dir):
+            os.makedirs(self.loved_dir)
+
+        shutil.copy2(self.filename, self.loved_dir)
+
         # update view
         self.refresh()
 
     def delete_image(self):
         # set action
         self.action = "trashed"
+
+        # mark image as trashed
+        if not os.path.exists(self.trashed_dir):
+            os.makedirs(self.trashed_dir)
+
+        shutil.copy2(self.filename, self.trashed_dir)
 
         # update view
         self.refresh()
@@ -183,11 +201,13 @@ class ImageManager(object):
     image_index = 0
     count = 0
     display_index = 1
+    directory = ""
 
     def init_images(self):
         files_manager = FilesManager()
         self.images = files_manager.get_images()
         self.count = len(self.images)
+        self.directory = files_manager.directory
 
     def change_image(self, direction):
         try:
@@ -214,11 +234,15 @@ class ImageManager(object):
 
 
 class FilesManager(object):
+    directory = ""
+
     def get_images(self):
-        return self.filter_images(self.open_directory() )
+        return self.filter_images(self.open_directory())
 
     def open_directory(self):
-        return QtWidgets.QFileDialog().getExistingDirectory()
+        self.directory = QtWidgets.QFileDialog().getExistingDirectory()
+
+        return self.directory
 
     def filter_images(self, directory):
         images = []
