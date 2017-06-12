@@ -17,13 +17,13 @@ class ImageManagerTest(unittest.TestCase):
 
         self.assertEqual("2.jpg", filename)
 
-        self.image_manager.image_index = 1
+        self.image_manager.id = 1
         filename = self.image_manager.change_image("next")
 
         self.assertEqual("3.jpg", filename)
 
     def test_change_image_prev(self):
-        self.image_manager.image_index = 2
+        self.image_manager.id = 2
         filename = self.image_manager.change_image("prev")
 
         self.assertEqual("2.jpg", filename)
@@ -33,12 +33,12 @@ class ImageManagerTest(unittest.TestCase):
         self.assertEqual("1.jpg", filename)
 
     def test_change_image_out_of_range(self):
-        self.image_manager.image_index = 0
+        self.image_manager.id = 0
         filename = self.image_manager.change_image("prev")
 
         self.assertEqual(False, filename)
 
-        self.image_manager.image_index = 2
+        self.image_manager.id = 2
         filename = self.image_manager.change_image("next")
 
         self.assertEqual(False, filename)

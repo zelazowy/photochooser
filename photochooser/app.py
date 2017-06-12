@@ -1,5 +1,5 @@
 from PyQt5 import QtGui, QtWidgets, QtCore
-import sys, glob, os, functools, exifread, re, shutil
+import sys, glob, os, functools, exifread, re, shutil, sqlite3
 
 DIR_PREV = "prev"
 DIR_NEXT = "next"
@@ -8,7 +8,7 @@ DIR_LAST = "last"
 
 class App(QtWidgets.QMainWindow):
     image_manager = None
-    filename = None
+    id = None
     action = None
 
     app_width = 0
@@ -39,10 +39,13 @@ class App(QtWidgets.QMainWindow):
         self.init_toolbar()
 
         # displays photochooser logo
-        self.filename = "../assets/photochooser_camera.png"
-        self.refresh()
+        # self.filename = "../assets/photochooser_camera.png"
+        # self.refresh()
 
         self.image_manager.init_images()
+
+        self.image_config = ImagesConfig(self.image_manager.directory)
+
         self.loved_dir = os.path.join(self.image_manager.directory, self.loved_dir)
         self.trashed_dir = os.path.join(self.image_manager.directory, self.trashed_dir)
 
@@ -75,20 +78,23 @@ class App(QtWidgets.QMainWindow):
         delete_action.triggered.connect(self.delete_image)
         toolbar.addAction(delete_action)
 
-    def prepare_image(self, filename):
+    def prepare_image(self, id):
         # create pixmap to display image (from given filename)
-        pixmap = QtGui.QPixmap(filename)
+        image = self.image_manager.images[id]
+        pixmap = QtGui.QPixmap(image["filename"])
 
         try:
-            with open(filename, 'rb') as file:
-                tags = exifread.process_file(file)
 
-                rotation_tag = tags['Image Orientation']
-                rotation = re.search('[0-9]+', str(rotation_tag)).group(0)
 
-                transform = QtGui.QTransform()
-                transform.rotate(float(rotation))
-                pixmap = pixmap.transformed(transform)
+            # with open(filename, 'rb') as file:
+            #     tags = exifread.process_file(file)
+            #
+            #     rotation_tag = tags['Image Orientation']
+            #     rotation = re.search('[0-9]+', str(rotation_tag)).group(0)
+            #
+            transform = QtGui.QTransform()
+            transform.rotate(float(image["rotation"]))
+            pixmap = pixmap.transformed(transform)
         except:
             pass
 
@@ -103,7 +109,7 @@ class App(QtWidgets.QMainWindow):
 
     def display_statusbar(self):
         self.statusBar().showMessage(
-            "[%d/%d] %s" % (self.image_manager.display_index, self.image_manager.count, self.filename)
+            "[%d/%d] %s" % (self.id, self.image_manager.count, self.image_manager.images[self.id]["filename"])
         )
 
     # Decides what to do when specific keys are pressed
@@ -119,12 +125,12 @@ class App(QtWidgets.QMainWindow):
         self.change_image(direction=direction)
 
     def paintEvent(self, QPaintEvent):
-        if not self.filename:
+        if not self.id:
             return
 
         painter = QtGui.QPainter(self)
 
-        pixmap = self.prepare_image(self.filename)
+        pixmap = self.prepare_image(self.id)
         painter.drawPixmap(self.center_position(pixmap.width(), pixmap.height()), pixmap)
 
         if self.action == "loved":
@@ -151,13 +157,13 @@ class App(QtWidgets.QMainWindow):
 
     # controls image change
     def change_image(self, direction):
-        filename = self.image_manager.change_image(direction)
+        id = self.image_manager.change_image(direction)
 
-        if not filename:
+        if not id:
             return
 
         # set current filename
-        self.filename = filename
+        self.id = id
 
         # update view
         self.refresh()
@@ -167,10 +173,10 @@ class App(QtWidgets.QMainWindow):
         self.action = "loved"
 
         # mark image as loved
-        if not os.path.exists(self.loved_dir):
-            os.makedirs(self.loved_dir)
-
-        shutil.copy2(self.filename, self.loved_dir)
+        # if not os.path.exists(self.loved_dir):
+        #     os.makedirs(self.loved_dir)
+        #
+        # shutil.copy2(self.filename, self.loved_dir)
 
         # update view
         self.refresh()
@@ -180,10 +186,10 @@ class App(QtWidgets.QMainWindow):
         self.action = "trashed"
 
         # mark image as trashed
-        if not os.path.exists(self.trashed_dir):
-            os.makedirs(self.trashed_dir)
-
-        shutil.copy2(self.filename, self.trashed_dir)
+        # if not os.path.exists(self.trashed_dir):
+        #     os.makedirs(self.trashed_dir)
+        #
+        # shutil.copy2(self.filename, self.trashed_dir)
 
         # update view
         self.refresh()
@@ -194,38 +200,44 @@ class App(QtWidgets.QMainWindow):
 
 
 class ImageManager(object):
+    image_config = None
+
     images = []
-    image_index = 0
+    id = 1
     count = 0
-    display_index = 1
     directory = ""
 
     def init_images(self):
         files_manager = FilesManager()
-        self.images = files_manager.get_images()
-        self.count = len(self.images)
+        images = files_manager.get_images()
         self.directory = files_manager.directory
+
+        self.image_config = ImagesConfig(self.directory)
+        self.image_config.init_images(images)
+
+        self.images = self.image_config.load_images()
+        self.count = len(self.images)
 
     def change_image(self, direction):
         try:
             if direction == DIR_PREV:
-                index = self.image_index - 1
+                index = self.id - 1
 
-                if index < 0:
+                if index < 1:
                     raise IndexError
             elif direction == DIR_NEXT:
-                index = self.image_index + 1
+                index = self.id + 1
+
+                if index > self.count:
+                    raise IndexError
             elif direction == DIR_FIRST:
-                index = 0
+                index = 1
             else:
                 raise RuntimeError
 
-            filename = self.images[index]
+            self.id = index
 
-            self.image_index = index
-            self.display_index = self.image_index + 1
-
-            return filename
+            return self.id
         except IndexError:
             return False
 
@@ -247,6 +259,64 @@ class FilesManager(object):
         images.extend(glob.glob(os.path.join(directory, '*.png')))
 
         return images
+
+
+class ImagesConfig(object):
+    connection = None
+
+    def __init__(self, directory):
+        db_path = os.path.join(directory, "photochooser.db")
+
+        if not os.path.exists(db_path):
+            self.connection = sqlite3.connect(db_path)
+            self.init_db()
+        else:
+            self.connection = sqlite3.connect(db_path)
+
+    def init_db(self):
+        c = self.connection.cursor()
+
+        # Create table
+        c.execute('''CREATE TABLE images (
+                id INTEGER PRIMARY KEY UNIQUE,
+                filename VARCHAR (255),
+                rotation INTEGER,
+                status CHAR (10) DEFAULT none
+            );''')
+
+    def init_images(self, images):
+        # todo:
+        # check if all images are loaded into db (select * where filenames in [images]?
+        # insert only non loaded images
+
+        c = self.connection.cursor()
+
+        for img in images:
+            with open(img, 'rb') as file:
+                try:
+                    tags = exifread.process_file(file)
+
+                    rotation_tag = tags['Image Orientation']
+                    rotation = re.search('[0-9]+', str(rotation_tag)).group(0)
+                except:
+                    rotation = 0
+
+                c.execute('INSERT INTO images VALUES (NULL, ?, ?, NULL)', (img, rotation))
+
+        self.connection.commit()
+
+    def load_images(self):
+        c = self.connection.cursor()
+
+        c.execute("SELECT id, filename, rotation, status FROM images")
+
+        images = c.fetchall()
+
+        data = {}
+        for img in images:
+            data[img[0]] = {"id": img[1], "filename": img[1], "rotation": img[2], "status": img[3]}
+
+        return data
 
 
 if __name__ == "__main__":
