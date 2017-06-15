@@ -7,7 +7,7 @@ DIR_FIRST = "first"
 DIR_LAST = "last"
 
 class App(QtWidgets.QMainWindow):
-    image_manager = None
+    image_config = None
     id = None
     action = None
 
@@ -34,28 +34,36 @@ class App(QtWidgets.QMainWindow):
         self.label.setFixedWidth(self.app_width)
         self.label.setFixedHeight(self.app_height)
 
-        self.image_manager = ImageManager()
+        self.image_config = ImagesConfig()
 
         self.init_toolbar()
 
         # displays photochooser logo
+        # todo add special action for welcome screen
         # self.filename = "../assets/photochooser_camera.png"
         # self.refresh()
 
-        self.image_manager.init_images()
-
-        self.image_config = ImagesConfig(self.image_manager.directory)
-
-        self.loved_dir = os.path.join(self.image_manager.directory, self.loved_dir)
-        self.trashed_dir = os.path.join(self.image_manager.directory, self.trashed_dir)
+        self.loved_dir = os.path.join(self.image_config.directory, self.loved_dir)
+        self.trashed_dir = os.path.join(self.image_config.directory, self.trashed_dir)
 
         self.change_image(DIR_FIRST)
 
-        self.activateWindow()
         # sets focus on main window
+        self.activateWindow()
 
     def init_toolbar(self):
         toolbar = self.addToolBar("tb")
+
+        # spacer widget for left
+        left_spacer = QtWidgets.QWidget()
+        left_spacer.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        # spacer widget for right
+        # you can't add the same widget to both left and right. you need two different widgets.
+        right_spacer = QtWidgets.QWidget()
+        right_spacer.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+
+        # here goes the left one
+        toolbar.addWidget(left_spacer)
 
         exit_action = QtWidgets.QAction(QtGui.QIcon("../assets/icon_exit.png"), 'Exit', self)
         exit_action.setShortcut('Ctrl+Q')
@@ -78,20 +86,15 @@ class App(QtWidgets.QMainWindow):
         delete_action.triggered.connect(self.delete_image)
         toolbar.addAction(delete_action)
 
+        # here goes the left one
+        toolbar.addWidget(right_spacer)
+
     def prepare_image(self, id):
         # create pixmap to display image (from given filename)
-        image = self.image_manager.images[id]
+        image = self.image_config.images[id]
         pixmap = QtGui.QPixmap(image["filename"])
 
         try:
-
-
-            # with open(filename, 'rb') as file:
-            #     tags = exifread.process_file(file)
-            #
-            #     rotation_tag = tags['Image Orientation']
-            #     rotation = re.search('[0-9]+', str(rotation_tag)).group(0)
-            #
             transform = QtGui.QTransform()
             transform.rotate(float(image["rotation"]))
             pixmap = pixmap.transformed(transform)
@@ -109,7 +112,7 @@ class App(QtWidgets.QMainWindow):
 
     def display_statusbar(self):
         self.statusBar().showMessage(
-            "[%d/%d] %s" % (self.id, self.image_manager.count, self.image_manager.images[self.id]["filename"])
+            "[%d/%d] %s" % (self.id, self.image_config.count, self.image_config.images[self.id]["filename"])
         )
 
     # Decides what to do when specific keys are pressed
@@ -157,16 +160,28 @@ class App(QtWidgets.QMainWindow):
 
     # controls image change
     def change_image(self, direction):
-        id = self.image_manager.change_image(direction)
+        try:
+            if direction == DIR_PREV:
+                index = self.id - 1
 
-        if not id:
+                if index < 1:
+                    raise IndexError
+            elif direction == DIR_NEXT:
+                index = self.id + 1
+
+                if index > self.image_config.count:
+                    raise IndexError
+            elif direction == DIR_FIRST:
+                index = 1
+            else:
+                raise RuntimeError
+
+            self.id = index
+
+            # update view
+            self.refresh()
+        except IndexError:
             return
-
-        # set current filename
-        self.id = id
-
-        # update view
-        self.refresh()
 
     def love_image(self):
         # set action
@@ -199,54 +214,11 @@ class App(QtWidgets.QMainWindow):
         self.update()
 
 
-class ImageManager(object):
-    image_config = None
-
-    images = []
-    id = 1
-    count = 0
-    directory = ""
-
-    def init_images(self):
-        files_manager = FilesManager()
-        images = files_manager.get_images()
-        self.directory = files_manager.directory
-
-        self.image_config = ImagesConfig(self.directory)
-        self.image_config.init_images(images)
-
-        self.images = self.image_config.load_images()
-        self.count = len(self.images)
-
-    def change_image(self, direction):
-        try:
-            if direction == DIR_PREV:
-                index = self.id - 1
-
-                if index < 1:
-                    raise IndexError
-            elif direction == DIR_NEXT:
-                index = self.id + 1
-
-                if index > self.count:
-                    raise IndexError
-            elif direction == DIR_FIRST:
-                index = 1
-            else:
-                raise RuntimeError
-
-            self.id = index
-
-            return self.id
-        except IndexError:
-            return False
-
-
 class FilesManager(object):
     directory = ""
 
-    def get_images(self):
-        return self.filter_images(self.open_directory())
+    def get_images(self, directory):
+        return self.filter_images(directory)
 
     def open_directory(self):
         self.directory = QtWidgets.QFileDialog().getExistingDirectory()
@@ -263,15 +235,28 @@ class FilesManager(object):
 
 class ImagesConfig(object):
     connection = None
+    directory = ""
 
-    def __init__(self, directory):
-        db_path = os.path.join(directory, "photochooser.db")
+    images = []
+    count = 0
+
+    def __init__(self):
+        files_manager = FilesManager()
+        self.directory = files_manager.open_directory()
+
+        db_path = os.path.join(self.directory, "photochooser.db")
 
         if not os.path.exists(db_path):
             self.connection = sqlite3.connect(db_path)
             self.init_db()
+
+            images = files_manager.get_images(self.directory)
+            self.init_images(images)
         else:
             self.connection = sqlite3.connect(db_path)
+
+        self.images = self.load_images()
+        self.count = len(self.images)
 
     def init_db(self):
         c = self.connection.cursor()
@@ -301,7 +286,7 @@ class ImagesConfig(object):
                 except:
                     rotation = 0
 
-                c.execute('INSERT INTO images VALUES (NULL, ?, ?, NULL)', (img, rotation))
+                c.execute('INSERT INTO images VALUES (NULL, ?, ?, "None")', (img, rotation))
 
         self.connection.commit()
 
