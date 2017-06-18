@@ -1,10 +1,11 @@
 from PyQt5 import QtGui, QtWidgets, QtCore
 import sys, glob, os, functools, exifread, re, shutil, sqlite3
 
-DIR_PREV = "prev"
-DIR_NEXT = "next"
-DIR_FIRST = "first"
-DIR_LAST = "last"
+DIRECTION_PREV = "prev"
+DIRECTION_NEXT = "next"
+DIRECTION_FIRST = "first"
+DIRECTION_LAST = "last"
+
 
 class App(QtWidgets.QMainWindow):
     image_config = None
@@ -21,7 +22,7 @@ class App(QtWidgets.QMainWindow):
 
         self.label = QtWidgets.QLabel(self)
 
-        self.setWindowTitle("Photochooser v0.2.0")
+        self.setWindowTitle("Photochooser v0.2.2")
         self.showMaximized()
 
         self.app_width = self.width()
@@ -33,6 +34,7 @@ class App(QtWidgets.QMainWindow):
 
         self.image_config = ImagesConfig()
 
+        self.init_menubar()
         self.init_toolbar()
 
         # displays photochooser logo
@@ -40,10 +42,19 @@ class App(QtWidgets.QMainWindow):
         # self.filename = "../assets/photochooser_camera.png"
         # self.refresh()
 
-        self.change_image(DIR_FIRST)
-
         # sets focus on main window
         self.activateWindow()
+
+    def init_menubar(self):
+        open_action = QtWidgets.QAction(self)
+        open_action.setText("Open directory")
+        # open_action.setShortcut('Ctrl+O')
+        open_action.triggered.connect(self.prepare_directory)
+        # open_action.triggered.connect(self.close)
+
+        menubar = self.menuBar()
+        open_menu = menubar.addMenu("File")
+        open_menu.addAction(open_action)
 
     def init_toolbar(self):
         toolbar = self.addToolBar("tb")
@@ -65,11 +76,11 @@ class App(QtWidgets.QMainWindow):
         toolbar.addAction(exit_action)
 
         prev_action = QtWidgets.QAction(QtGui.QIcon("../assets/icon_prev.png"), 'Prev', self)
-        prev_action.triggered.connect(functools.partial(self.change_image, DIR_PREV))
+        prev_action.triggered.connect(functools.partial(self.change_image, DIRECTION_PREV))
         toolbar.addAction(prev_action)
 
         next_action = QtWidgets.QAction(QtGui.QIcon("../assets/icon_next.png"), 'Next', self)
-        next_action.triggered.connect(functools.partial(self.change_image, DIR_NEXT))
+        next_action.triggered.connect(functools.partial(self.change_image, DIRECTION_NEXT))
         toolbar.addAction(next_action)
 
         love_action = QtWidgets.QAction(QtGui.QIcon("../assets/icon_love.png"), 'Love', self)
@@ -77,11 +88,15 @@ class App(QtWidgets.QMainWindow):
         toolbar.addAction(love_action)
 
         delete_action = QtWidgets.QAction(QtGui.QIcon("../assets/icon_trash.png"), 'Next image', self)
-        delete_action.triggered.connect(self.delete_image)
+        delete_action.triggered.connect(self.trash_image)
         toolbar.addAction(delete_action)
 
         # here goes the left one
         toolbar.addWidget(right_spacer)
+
+    def prepare_directory(self):
+        self.image_config.open()
+        self.change_image(DIRECTION_FIRST)
 
     def prepare_image(self, id):
         # create pixmap to display image (from given filename)
@@ -105,6 +120,9 @@ class App(QtWidgets.QMainWindow):
         return pixmap
 
     def display_statusbar(self):
+        if not self.id:
+            return
+
         self.statusBar().showMessage(
             "[%d/%d] %s" % (self.id, self.image_config.count, self.image_config.images[self.id]["filename"])
         )
@@ -113,20 +131,23 @@ class App(QtWidgets.QMainWindow):
     def keyPressEvent(self, e):
         key = e.key()
         if key == QtCore.Qt.Key_Right:
-            direction = DIR_NEXT
+            self.change_image(direction=DIRECTION_NEXT)
         elif key == QtCore.Qt.Key_Left:
-            direction = DIR_PREV
-        elif key == QtCore.Qt.Key_1:
+            self.change_image(direction=DIRECTION_PREV)
+        elif key == QtCore.Qt.Key_Up:
+            self.love_image()
+        elif key == QtCore.Qt.Key_Down:
+            self.trash_image()
+
+        elif key == QtCore.Qt.Key_1: # debug
             self.image_config.debug_statuses()
             return
-        elif key == QtCore.Qt.Key_0:
+        elif key == QtCore.Qt.Key_0: # TODO APPLY
             self.image_config.apply()
             QtWidgets.qApp.quit()
             return
         else:
             return
-
-        self.change_image(direction=direction)
 
     def paintEvent(self, QPaintEvent):
         if not self.id:
@@ -178,17 +199,17 @@ class App(QtWidgets.QMainWindow):
     # controls image change
     def change_image(self, direction):
         try:
-            if direction == DIR_PREV:
+            if direction == DIRECTION_PREV:
                 index = self.id - 1
 
                 if index < 1:
                     raise IndexError
-            elif direction == DIR_NEXT:
+            elif direction == DIRECTION_NEXT:
                 index = self.id + 1
 
                 if index > self.image_config.count:
                     raise IndexError
-            elif direction == DIR_FIRST:
+            elif direction == DIRECTION_FIRST:
                 index = 1
             else:
                 raise RuntimeError
@@ -205,7 +226,7 @@ class App(QtWidgets.QMainWindow):
 
         self.refresh()
 
-    def delete_image(self):
+    def trash_image(self):
         self.image_config.mark_as_trashed(self.id)
 
         self.refresh()
@@ -249,7 +270,7 @@ class ImagesConfig(object):
     loved_directory = "loved"
     trashed_directory = "trash"
 
-    def __init__(self):
+    def open(self):
         files_manager = FilesManager()
         self.directory = files_manager.open_directory()
         self.loved_directory = os.path.join(self.directory, self.loved_directory)
