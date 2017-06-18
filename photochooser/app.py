@@ -16,9 +16,6 @@ class App(QtWidgets.QMainWindow):
 
     label = None
 
-    loved_dir = "favourites"
-    trashed_dir = "trash"
-
     def __init__(self):
         super(App, self).__init__()
 
@@ -42,9 +39,6 @@ class App(QtWidgets.QMainWindow):
         # todo add special action for welcome screen
         # self.filename = "../assets/photochooser_camera.png"
         # self.refresh()
-
-        self.loved_dir = os.path.join(self.image_config.directory, self.loved_dir)
-        self.trashed_dir = os.path.join(self.image_config.directory, self.trashed_dir)
 
         self.change_image(DIR_FIRST)
 
@@ -124,6 +118,10 @@ class App(QtWidgets.QMainWindow):
             direction = DIR_PREV
         elif key == QtCore.Qt.Key_1:
             self.image_config.debug_statuses()
+            return
+        elif key == QtCore.Qt.Key_0:
+            self.image_config.apply()
+            QtWidgets.qApp.quit()
             return
         else:
             return
@@ -205,25 +203,11 @@ class App(QtWidgets.QMainWindow):
     def love_image(self):
         self.image_config.mark_as_loved(self.id)
 
-        # mark image as loved
-        # if not os.path.exists(self.loved_dir):
-        #     os.makedirs(self.loved_dir)
-        #
-        # shutil.copy2(self.filename, self.loved_dir)
-
-        # update view
         self.refresh()
 
     def delete_image(self):
         self.image_config.mark_as_trashed(self.id)
 
-        # mark image as trashed
-        # if not os.path.exists(self.trashed_dir):
-        #     os.makedirs(self.trashed_dir)
-        #
-        # shutil.copy2(self.filename, self.trashed_dir)
-
-        # update view
         self.refresh()
 
     def refresh(self):
@@ -253,6 +237,7 @@ class FilesManager(object):
 class ImagesConfig(object):
     STATUS_LOVED = "Loved"
     STATUS_TRASHED = "Trashed"
+    STATUS_MOVED = "Moved"
     STATUS_NONE = "None"
 
     connection = None
@@ -261,9 +246,14 @@ class ImagesConfig(object):
     images = []
     count = 0
 
+    loved_directory = "loved"
+    trashed_directory = "trash"
+
     def __init__(self):
         files_manager = FilesManager()
         self.directory = files_manager.open_directory()
+        self.loved_directory = os.path.join(self.directory, self.loved_directory)
+        self.trashed_directory = os.path.join(self.directory, self.trashed_directory)
 
         db_path = os.path.join(self.directory, "photochooser.db")
 
@@ -314,13 +304,13 @@ class ImagesConfig(object):
     def load_images(self):
         c = self.connection.cursor()
 
-        c.execute("SELECT `id`, `filename`, `rotation`, `status` FROM images")
+        c.execute("SELECT `id`, `filename`, `rotation`, `status` FROM images WHERE `status` != ?", [self.STATUS_MOVED])
 
         images = c.fetchall()
 
         data = {}
         for img in images:
-            data[img[0]] = {"id": img[1], "filename": img[1], "rotation": img[2], "status": img[3]}
+            data[img[0]] = {"id": img[0], "filename": img[1], "rotation": img[2], "status": img[3]}
 
         return data
 
@@ -341,6 +331,28 @@ class ImagesConfig(object):
         self.connection.commit()
 
         self.images[id]["status"] = self.STATUS_TRASHED
+
+    def mark_as_moved(self, id):
+        c = self.connection.cursor()
+
+        c.execute("UPDATE images SET `status` = ? WHERE id = ?", (self.STATUS_MOVED, id))
+
+        self.connection.commit()
+
+    def apply(self):
+        if not os.path.exists(self.loved_directory):
+            os.makedirs(self.loved_directory)
+
+        if not os.path.exists(self.trashed_directory):
+            os.makedirs(self.trashed_directory)
+
+        for image in self.images.values():
+            if image["status"] == self.STATUS_LOVED:
+                shutil.move(image["filename"], self.loved_directory)
+                self.mark_as_moved(image["id"])
+            elif image["status"] == self.STATUS_TRASHED:
+                shutil.move(image["filename"], self.trashed_directory)
+                self.mark_as_moved(image["id"])
 
     def debug_statuses(self):
         c = self.connection.cursor()
