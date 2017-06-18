@@ -122,6 +122,9 @@ class App(QtWidgets.QMainWindow):
             direction = DIR_NEXT
         elif key == QtCore.Qt.Key_Left:
             direction = DIR_PREV
+        elif key == QtCore.Qt.Key_1:
+            self.image_config.debug_statuses()
+            return
         else:
             return
 
@@ -136,16 +139,32 @@ class App(QtWidgets.QMainWindow):
         pixmap = self.prepare_image(self.id)
         painter.drawPixmap(self.center_position(pixmap.width(), pixmap.height()), pixmap)
 
-        if self.action == "loved":
-            action_pixmap = QtGui.QPixmap("../assets/loved.png")
-            self.action = None
+        if self.image_config.images[self.id]["status"] == self.image_config.STATUS_LOVED:
+            loved_icon = QtGui.QPixmap("../assets/loved.png")
+        else:
+            loved_icon = QtGui.QPixmap("../assets/loved_placeholder.png")
 
-            painter.drawPixmap(self.center_position(action_pixmap.width(), action_pixmap.height()), action_pixmap)
-        elif self.action == "trashed":
-            action_pixmap = QtGui.QPixmap("../assets/trashed.png")
-            self.action = None
+        rect = QtCore.QRect()
+        rect.setX(10)
+        rect.setY(self.app_height - 80)
+        rect.setWidth(loved_icon.width())
+        rect.setHeight(loved_icon.height())
 
-            painter.drawPixmap(self.center_position(action_pixmap.width(), action_pixmap.height()), action_pixmap)
+        painter.drawPixmap(rect, loved_icon)
+
+        if self.image_config.images[self.id]["status"] == self.image_config.STATUS_TRASHED:
+            trashed_icon = QtGui.QPixmap("../assets/trashed.png")
+        else:
+            trashed_icon = QtGui.QPixmap("../assets/trashed_placeholder.png")
+
+        rect = QtCore.QRect()
+        rect.setX(10)
+        rect.setY(self.app_height - 145)
+        rect.setWidth(trashed_icon.width())
+        rect.setHeight(trashed_icon.height())
+
+        # painter.drawPixmap(self.center_position(action_pixmap.width(), action_pixmap.height()), action_pixmap)
+        painter.drawPixmap(rect, trashed_icon)
 
         painter.end()
 
@@ -184,8 +203,7 @@ class App(QtWidgets.QMainWindow):
             return
 
     def love_image(self):
-        # set action
-        self.action = "loved"
+        self.image_config.mark_as_loved(self.id)
 
         # mark image as loved
         # if not os.path.exists(self.loved_dir):
@@ -197,8 +215,7 @@ class App(QtWidgets.QMainWindow):
         self.refresh()
 
     def delete_image(self):
-        # set action
-        self.action = "trashed"
+        self.image_config.mark_as_trashed(self.id)
 
         # mark image as trashed
         # if not os.path.exists(self.trashed_dir):
@@ -234,6 +251,10 @@ class FilesManager(object):
 
 
 class ImagesConfig(object):
+    STATUS_LOVED = "Loved"
+    STATUS_TRASHED = "Trashed"
+    STATUS_NONE = "None"
+
     connection = None
     directory = ""
 
@@ -293,7 +314,7 @@ class ImagesConfig(object):
     def load_images(self):
         c = self.connection.cursor()
 
-        c.execute("SELECT id, filename, rotation, status FROM images")
+        c.execute("SELECT `id`, `filename`, `rotation`, `status` FROM images")
 
         images = c.fetchall()
 
@@ -302,6 +323,33 @@ class ImagesConfig(object):
             data[img[0]] = {"id": img[1], "filename": img[1], "rotation": img[2], "status": img[3]}
 
         return data
+
+    def mark_as_loved(self, id):
+        c = self.connection.cursor()
+
+        c.execute("UPDATE images SET `status` = ? WHERE `id` = ?", (self.STATUS_LOVED, id))
+
+        self.connection.commit()
+
+        self.images[id]["status"] = self.STATUS_LOVED
+
+    def mark_as_trashed(self, id):
+        c = self.connection.cursor()
+
+        c.execute("UPDATE images SET `status` = ? WHERE id = ?", (self.STATUS_TRASHED, id))
+
+        self.connection.commit()
+
+        self.images[id]["status"] = self.STATUS_TRASHED
+
+    def debug_statuses(self):
+        c = self.connection.cursor()
+
+        c.execute("SELECT * FROM images")
+
+        images = c.fetchall()
+        for img in images:
+            print(img)
 
 
 if __name__ == "__main__":
