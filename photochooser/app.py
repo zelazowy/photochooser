@@ -50,7 +50,6 @@ class App(QtWidgets.QMainWindow):
         open_action.setText("Open directory")
         # open_action.setShortcut('Ctrl+O')
         open_action.triggered.connect(self.prepare_directory)
-        # open_action.triggered.connect(self.close)
 
         menubar = self.menuBar()
         open_menu = menubar.addMenu("File")
@@ -70,29 +69,41 @@ class App(QtWidgets.QMainWindow):
         # here goes the left one
         toolbar.addWidget(left_spacer)
 
-        exit_action = QtWidgets.QAction(QtGui.QIcon("../assets/icon_exit.png"), 'Exit', self)
+        prev_action = QtWidgets.QAction(QtGui.QIcon("../assets/open.png"), 'Open directory', self)
+        prev_action.triggered.connect(self.prepare_directory)
+        toolbar.addAction(prev_action)
+
+        prev_action = QtWidgets.QAction(QtGui.QIcon("../assets/prev.png"), 'Previous image', self)
+        prev_action.triggered.connect(functools.partial(self.change_image, DIRECTION_PREV))
+        toolbar.addAction(prev_action)
+
+        next_action = QtWidgets.QAction(QtGui.QIcon("../assets/next.png"), 'Next image', self)
+        next_action.triggered.connect(functools.partial(self.change_image, DIRECTION_NEXT))
+        toolbar.addAction(next_action)
+
+        love_action = QtWidgets.QAction(QtGui.QIcon("../assets/love.png"), 'Love image', self)
+        love_action.triggered.connect(self.love_image)
+        toolbar.addAction(love_action)
+
+        delete_action = QtWidgets.QAction(QtGui.QIcon("../assets/trash.png"), 'Move to trash', self)
+        delete_action.triggered.connect(self.trash_image)
+        toolbar.addAction(delete_action)
+
+        delete_action = QtWidgets.QAction(QtGui.QIcon("../assets/save.png"), 'Apply changes', self)
+        delete_action.triggered.connect(self.apply)
+        toolbar.addAction(delete_action)
+
+        exit_action = QtWidgets.QAction(QtGui.QIcon("../assets/close.png"), 'Exit', self)
         exit_action.setShortcut('Ctrl+Q')
         exit_action.triggered.connect(QtWidgets.qApp.quit)
         toolbar.addAction(exit_action)
 
-        prev_action = QtWidgets.QAction(QtGui.QIcon("../assets/icon_prev.png"), 'Prev', self)
-        prev_action.triggered.connect(functools.partial(self.change_image, DIRECTION_PREV))
-        toolbar.addAction(prev_action)
-
-        next_action = QtWidgets.QAction(QtGui.QIcon("../assets/icon_next.png"), 'Next', self)
-        next_action.triggered.connect(functools.partial(self.change_image, DIRECTION_NEXT))
-        toolbar.addAction(next_action)
-
-        love_action = QtWidgets.QAction(QtGui.QIcon("../assets/icon_love.png"), 'Love', self)
-        love_action.triggered.connect(self.love_image)
-        toolbar.addAction(love_action)
-
-        delete_action = QtWidgets.QAction(QtGui.QIcon("../assets/icon_trash.png"), 'Next image', self)
-        delete_action.triggered.connect(self.trash_image)
-        toolbar.addAction(delete_action)
-
         # here goes the left one
         toolbar.addWidget(right_spacer)
+
+    def apply(self):
+        self.image_config.apply()
+        self.change_image(DIRECTION_FIRST)
 
     def prepare_directory(self):
         self.image_config.open()
@@ -139,10 +150,10 @@ class App(QtWidgets.QMainWindow):
         elif key == QtCore.Qt.Key_Down:
             self.trash_image()
 
-        elif key == QtCore.Qt.Key_1: # debug
+        elif key == QtCore.Qt.Key_1:  # debug
             self.image_config.debug_statuses()
             return
-        elif key == QtCore.Qt.Key_0: # TODO APPLY
+        elif key == QtCore.Qt.Key_0:  # TODO APPLY
             self.image_config.apply()
             QtWidgets.qApp.quit()
             return
@@ -159,26 +170,26 @@ class App(QtWidgets.QMainWindow):
         painter.drawPixmap(self.center_position(pixmap.width(), pixmap.height()), pixmap)
 
         if self.image_config.images[self.id]["status"] == self.image_config.STATUS_LOVED:
-            loved_icon = QtGui.QPixmap("../assets/loved.png")
+            loved_icon = QtGui.QPixmap("../assets/love.png")
         else:
-            loved_icon = QtGui.QPixmap("../assets/loved_placeholder.png")
+            loved_icon = QtGui.QPixmap("../assets/love_placeholder.png")
 
         rect = QtCore.QRect()
         rect.setX(10)
-        rect.setY(self.app_height - 80)
+        rect.setY(self.app_height - 155)
         rect.setWidth(loved_icon.width())
         rect.setHeight(loved_icon.height())
 
         painter.drawPixmap(rect, loved_icon)
 
         if self.image_config.images[self.id]["status"] == self.image_config.STATUS_TRASHED:
-            trashed_icon = QtGui.QPixmap("../assets/trashed.png")
+            trashed_icon = QtGui.QPixmap("../assets/trash.png")
         else:
-            trashed_icon = QtGui.QPixmap("../assets/trashed_placeholder.png")
+            trashed_icon = QtGui.QPixmap("../assets/trash_placeholder.png")
 
         rect = QtCore.QRect()
         rect.setX(10)
-        rect.setY(self.app_height - 145)
+        rect.setY(self.app_height - 90)
         rect.setWidth(trashed_icon.width())
         rect.setHeight(trashed_icon.height())
 
@@ -298,7 +309,8 @@ class ImagesConfig(object):
                 id INTEGER PRIMARY KEY UNIQUE,
                 filename VARCHAR (255),
                 rotation INTEGER,
-                status CHAR (10) DEFAULT none
+                status CHAR (10) DEFAULT none,
+                processed BOOLEAN DEFAULT (0)
             );''')
 
     def init_images(self, images):
@@ -318,20 +330,20 @@ class ImagesConfig(object):
                 except:
                     rotation = 0
 
-                c.execute('INSERT INTO images VALUES (NULL, ?, ?, "None")', (img, rotation))
+                c.execute('INSERT INTO images VALUES (NULL, ?, ?, "None", 0)', (img, rotation))
 
         self.connection.commit()
 
     def load_images(self):
         c = self.connection.cursor()
 
-        c.execute("SELECT `id`, `filename`, `rotation`, `status` FROM images WHERE `status` != ?", [self.STATUS_MOVED])
+        c.execute("SELECT `id`, `filename`, `rotation`, `status` FROM images WHERE `processed` != ?", [1])
 
         images = c.fetchall()
 
         data = {}
-        for img in images:
-            data[img[0]] = {"id": img[0], "filename": img[1], "rotation": img[2], "status": img[3]}
+        for i, img in enumerate(images):
+            data[i + 1] = {"id": img[0], "filename": img[1], "rotation": img[2], "status": img[3]}
 
         return data
 
@@ -356,7 +368,7 @@ class ImagesConfig(object):
     def mark_as_moved(self, id):
         c = self.connection.cursor()
 
-        c.execute("UPDATE images SET `status` = ? WHERE id = ?", (self.STATUS_MOVED, id))
+        c.execute("UPDATE images SET `processed` = ? WHERE id = ?", (1, id))
 
         self.connection.commit()
 
@@ -374,6 +386,10 @@ class ImagesConfig(object):
             elif image["status"] == self.STATUS_TRASHED:
                 shutil.move(image["filename"], self.trashed_directory)
                 self.mark_as_moved(image["id"])
+
+        # refresh images
+        self.images = self.load_images()
+        self.count = len(self.images)
 
     def debug_statuses(self):
         c = self.connection.cursor()
