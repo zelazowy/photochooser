@@ -107,7 +107,9 @@ class App(QtWidgets.QMainWindow):
 
     def prepare_directory(self):
         self.image_config.open()
-        self.change_image(DIRECTION_FIRST)
+        self.id = self.image_config.get_last_viewed()
+
+        self.refresh()
 
     def prepare_image(self, id):
         # create pixmap to display image (from given filename)
@@ -227,6 +229,8 @@ class App(QtWidgets.QMainWindow):
 
             self.id = index
 
+            self.image_config.set_currently_viewed(self.id)
+
             # update view
             self.refresh()
         except IndexError:
@@ -305,13 +309,26 @@ class ImagesConfig(object):
         c = self.connection.cursor()
 
         # Create table
-        c.execute('''CREATE TABLE images (
+        c.execute('''
+            CREATE TABLE images (
                 id INTEGER PRIMARY KEY UNIQUE,
                 filename VARCHAR (255),
                 rotation INTEGER,
                 status CHAR (10) DEFAULT none,
                 processed BOOLEAN DEFAULT (0)
-            );''')
+            );
+        ''')
+
+        c.execute('''
+            CREATE TABLE info (
+                id    INTEGER      PRIMARY KEY,
+                name  VARCHAR (32) NOT NULL,
+                value VARCHAR (32) NOT NULL
+            );
+        ''')
+
+        c.execute("INSERT INTO info (`name`, `value`) VALUES ('last_image', 1)")
+        self.connection.commit()
 
     def init_images(self, images):
         # todo:
@@ -390,6 +407,21 @@ class ImagesConfig(object):
         # refresh images
         self.images = self.load_images()
         self.count = len(self.images)
+
+    def set_currently_viewed(self, id):
+        c = self.connection.cursor()
+
+        c.execute("UPDATE info SET `name` = 'last_image', `value` = ?", str(id))
+
+        self.connection.commit()
+
+    def get_last_viewed(self):
+        c = self.connection.cursor()
+
+        c.execute("SELECT `value` FROM info WHERE `name` = 'last_image'")
+
+        # gets only first column
+        return int(c.fetchone()[0])
 
     def debug_statuses(self):
         c = self.connection.cursor()
