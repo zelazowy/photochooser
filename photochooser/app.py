@@ -9,7 +9,7 @@ DIRECTION_LAST = "last"
 
 class App(QtWidgets.QMainWindow):
     image_config = None
-    id = None
+    image_id = None
     action = None
 
     app_width = 0
@@ -107,13 +107,13 @@ class App(QtWidgets.QMainWindow):
 
     def prepare_directory(self):
         self.image_config.open()
-        self.id = self.image_config.get_last_viewed()
+        self.image_id = self.image_config.get_last_viewed()
 
         self.refresh()
 
-    def prepare_image(self, id):
+    def prepare_image(self, image_id):
         # create pixmap to display image (from given filename)
-        image = self.image_config.images[id]
+        image = self.image_config.images[image_id]
         pixmap = QtGui.QPixmap(image["filename"])
 
         try:
@@ -133,11 +133,11 @@ class App(QtWidgets.QMainWindow):
         return pixmap
 
     def display_statusbar(self):
-        if not self.id:
+        if not self.image_id:
             return
 
         self.statusBar().showMessage(
-            "[%d/%d] %s" % (self.id, self.image_config.count, self.image_config.images[self.id]["filename"])
+            "[%d/%d] %s" % (self.image_id, self.image_config.count, self.image_config.images[self.image_id]["filename"])
         )
 
     # Decides what to do when specific keys are pressed
@@ -155,7 +155,7 @@ class App(QtWidgets.QMainWindow):
         elif key == QtCore.Qt.Key_1:  # debug
             self.image_config.debug_statuses()
             return
-        elif key == QtCore.Qt.Key_0:  # TODO APPLY
+        elif key == QtCore.Qt.Key_0:
             self.image_config.apply()
             QtWidgets.qApp.quit()
             return
@@ -163,15 +163,15 @@ class App(QtWidgets.QMainWindow):
             return
 
     def paintEvent(self, QPaintEvent):
-        if not self.id:
+        if not self.image_id:
             return
 
         painter = QtGui.QPainter(self)
 
-        pixmap = self.prepare_image(self.id)
+        pixmap = self.prepare_image(self.image_id)
         painter.drawPixmap(self.center_position(pixmap.width(), pixmap.height()), pixmap)
 
-        if self.image_config.images[self.id]["status"] == self.image_config.STATUS_LOVED:
+        if self.image_config.images[self.image_id]["status"] == self.image_config.STATUS_LOVED:
             loved_icon = QtGui.QPixmap("../assets/love.png")
         else:
             loved_icon = QtGui.QPixmap("../assets/love_placeholder.png")
@@ -184,7 +184,7 @@ class App(QtWidgets.QMainWindow):
 
         painter.drawPixmap(rect, loved_icon)
 
-        if self.image_config.images[self.id]["status"] == self.image_config.STATUS_TRASHED:
+        if self.image_config.images[self.image_id]["status"] == self.image_config.STATUS_TRASHED:
             trashed_icon = QtGui.QPixmap("../assets/trash.png")
         else:
             trashed_icon = QtGui.QPixmap("../assets/trash_placeholder.png")
@@ -195,7 +195,6 @@ class App(QtWidgets.QMainWindow):
         rect.setWidth(trashed_icon.width())
         rect.setHeight(trashed_icon.height())
 
-        # painter.drawPixmap(self.center_position(action_pixmap.width(), action_pixmap.height()), action_pixmap)
         painter.drawPixmap(rect, trashed_icon)
 
         painter.end()
@@ -213,12 +212,12 @@ class App(QtWidgets.QMainWindow):
     def change_image(self, direction):
         try:
             if direction == DIRECTION_PREV:
-                index = self.id - 1
+                index = self.image_id - 1
 
                 if index < 1:
                     raise IndexError
             elif direction == DIRECTION_NEXT:
-                index = self.id + 1
+                index = self.image_id + 1
 
                 if index > self.image_config.count:
                     raise IndexError
@@ -227,9 +226,9 @@ class App(QtWidgets.QMainWindow):
             else:
                 raise RuntimeError
 
-            self.id = index
+            self.image_id = index
 
-            self.image_config.set_currently_viewed(self.id)
+            self.image_config.set_currently_viewed(self.image_id)
 
             # update view
             self.refresh()
@@ -237,12 +236,12 @@ class App(QtWidgets.QMainWindow):
             return
 
     def love_image(self):
-        self.image_config.toggle_loved(self.id)
+        self.image_config.toggle_loved(self.image_id)
 
         self.refresh()
 
     def trash_image(self):
-        self.image_config.toggle_trashed(self.id)
+        self.image_config.toggle_trashed(self.image_id)
 
         self.refresh()
 
@@ -312,7 +311,7 @@ class ImagesConfig(object):
         # Create table
         c.execute('''
             CREATE TABLE images (
-                id INTEGER PRIMARY KEY UNIQUE,
+                image_id INTEGER PRIMARY KEY UNIQUE,
                 filename VARCHAR (255),
                 rotation INTEGER,
                 status CHAR (10) DEFAULT none,
@@ -355,48 +354,48 @@ class ImagesConfig(object):
     def load_images(self):
         c = self.connection.cursor()
 
-        c.execute("SELECT `id`, `filename`, `rotation`, `status` FROM images WHERE `processed` != ?", [1])
+        c.execute("SELECT `image_id`, `filename`, `rotation`, `status` FROM images WHERE `processed` != ?", [1])
 
         images = c.fetchall()
 
         data = {}
         for i, img in enumerate(images):
-            data[i + 1] = {"id": img[0], "filename": img[1], "rotation": img[2], "status": img[3]}
+            data[i + 1] = {"image_id": img[0], "filename": img[1], "rotation": img[2], "status": img[3]}
 
         return data
 
-    def toggle_loved(self, id):
+    def toggle_loved(self, image_id):
         c = self.connection.cursor()
 
-        if self.images[id]["status"] == self.STATUS_LOVED:
+        if self.images[image_id]["status"] == self.STATUS_LOVED:
             status = self.STATUS_NONE
         else:
             status = self.STATUS_LOVED
 
-        c.execute("UPDATE images SET `status` = ? WHERE `id` = ?", (status, id))
+        c.execute("UPDATE images SET `status` = ? WHERE `image_id` = ?", (status, image_id))
 
         self.connection.commit()
 
-        self.images[id]["status"] = status
+        self.images[image_id]["status"] = status
 
-    def toggle_trashed(self, id):
+    def toggle_trashed(self, image_id):
         c = self.connection.cursor()
 
-        if self.images[id]["status"] == self.STATUS_TRASHED:
+        if self.images[image_id]["status"] == self.STATUS_TRASHED:
             status = self.STATUS_NONE
         else:
             status = self.STATUS_TRASHED
 
-        c.execute("UPDATE images SET `status` = ? WHERE id = ?", (status, id))
+        c.execute("UPDATE images SET `status` = ? WHERE image_id = ?", (status, image_id))
 
         self.connection.commit()
 
-        self.images[id]["status"] = status
+        self.images[image_id]["status"] = status
 
-    def mark_as_moved(self, id):
+    def mark_as_moved(self, image_id):
         c = self.connection.cursor()
 
-        c.execute("UPDATE images SET `processed` = ? WHERE id = ?", (1, id))
+        c.execute("UPDATE images SET `processed` = ? WHERE image_id = ?", (1, image_id))
 
         self.connection.commit()
 
@@ -410,19 +409,19 @@ class ImagesConfig(object):
         for image in self.images.values():
             if image["status"] == self.STATUS_LOVED:
                 shutil.move(image["filename"], self.loved_directory)
-                self.mark_as_moved(image["id"])
+                self.mark_as_moved(image["image_id"])
             elif image["status"] == self.STATUS_TRASHED:
                 shutil.move(image["filename"], self.trashed_directory)
-                self.mark_as_moved(image["id"])
+                self.mark_as_moved(image["image_id"])
 
         # refresh images
         self.images = self.load_images()
         self.count = len(self.images)
 
-    def set_currently_viewed(self, id):
+    def set_currently_viewed(self, image_id):
         c = self.connection.cursor()
 
-        c.execute("UPDATE info SET `name` = 'last_image', `value` = ?", str(id))
+        c.execute("UPDATE info SET `name` = 'last_image', `value` = ?", [str(image_id)])
 
         self.connection.commit()
 
