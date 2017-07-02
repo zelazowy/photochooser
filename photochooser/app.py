@@ -237,12 +237,12 @@ class App(QtWidgets.QMainWindow):
             return
 
     def love_image(self):
-        self.image_config.mark_as_loved(self.id)
+        self.image_config.toggle_loved(self.id)
 
         self.refresh()
 
     def trash_image(self):
-        self.image_config.mark_as_trashed(self.id)
+        self.image_config.toggle_trashed(self.id)
 
         self.refresh()
 
@@ -265,6 +265,7 @@ class FilesManager(object):
     def filter_images(self, directory):
         images = []
         images.extend(glob.glob(os.path.join(directory, '*.jpg')))
+        images.extend(glob.glob(os.path.join(directory, '*.JPG')))
         images.extend(glob.glob(os.path.join(directory, '*.png')))
 
         return images
@@ -364,23 +365,33 @@ class ImagesConfig(object):
 
         return data
 
-    def mark_as_loved(self, id):
+    def toggle_loved(self, id):
         c = self.connection.cursor()
 
-        c.execute("UPDATE images SET `status` = ? WHERE `id` = ?", (self.STATUS_LOVED, id))
+        if self.images[id]["status"] == self.STATUS_LOVED:
+            status = self.STATUS_NONE
+        else:
+            status = self.STATUS_LOVED
+
+        c.execute("UPDATE images SET `status` = ? WHERE `id` = ?", (status, id))
 
         self.connection.commit()
 
-        self.images[id]["status"] = self.STATUS_LOVED
+        self.images[id]["status"] = status
 
-    def mark_as_trashed(self, id):
+    def toggle_trashed(self, id):
         c = self.connection.cursor()
 
-        c.execute("UPDATE images SET `status` = ? WHERE id = ?", (self.STATUS_TRASHED, id))
+        if self.images[id]["status"] == self.STATUS_TRASHED:
+            status = self.STATUS_NONE
+        else:
+            status = self.STATUS_TRASHED
+
+        c.execute("UPDATE images SET `status` = ? WHERE id = ?", (status, id))
 
         self.connection.commit()
 
-        self.images[id]["status"] = self.STATUS_TRASHED
+        self.images[id]["status"] = status
 
     def mark_as_moved(self, id):
         c = self.connection.cursor()
