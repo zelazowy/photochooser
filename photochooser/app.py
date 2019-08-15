@@ -151,6 +151,12 @@ class App(QtWidgets.QMainWindow):
             self.love_image()
         elif key == QtCore.Qt.Key_Down:
             self.trash_image()
+        elif key == QtCore.Qt.Key_BracketLeft:
+            self.rotate_left()
+        elif key == QtCore.Qt.Key_BracketRight:
+            self.rotate_right()
+        elif key == QtCore.Qt.Key_F:
+            self.first_image()
 
         elif key == QtCore.Qt.Key_1:  # debug
             self.image_config.debug_statuses()
@@ -235,6 +241,14 @@ class App(QtWidgets.QMainWindow):
         except IndexError:
             return
 
+    def first_image(self):
+        self.image_id = 1
+
+        self.image_config.set_currently_viewed(self.image_id)
+
+        # update view
+        self.refresh()
+
     def love_image(self):
         self.image_config.toggle_loved(self.image_id)
 
@@ -242,6 +256,16 @@ class App(QtWidgets.QMainWindow):
 
     def trash_image(self):
         self.image_config.toggle_trashed(self.image_id)
+
+        self.refresh()
+
+    def rotate_left(self):
+        self.image_config.rotate_left(self.image_id)
+
+        self.refresh()
+
+    def rotate_right(self):
+        self.image_config.rotate_right(self.image_id)
 
         self.refresh()
 
@@ -267,7 +291,7 @@ class FilesManager(object):
         images.extend(glob.glob(os.path.join(directory, '*.JPG')))
         images.extend(glob.glob(os.path.join(directory, '*.png')))
 
-        return images
+        return sorted(images)
 
 
 class ImagesConfig(object):
@@ -396,6 +420,28 @@ class ImagesConfig(object):
         c = self.connection.cursor()
 
         c.execute("UPDATE images SET `processed` = ? WHERE image_id = ?", (1, image_id))
+
+        self.connection.commit()
+
+    def rotate_left(self, image_id):
+        c = self.connection.cursor()
+
+        self.images[image_id]['rotation'] = 270 if self.images[image_id]['rotation'] == 0 else self.images[image_id]['rotation'] - 90
+
+        # print(self.images[image_id]['rotation'], rotation)
+
+        c.execute("UPDATE images SET `rotation` = ? WHERE image_id = ?", (self.images[image_id]['rotation'], image_id))
+
+        self.connection.commit()
+
+    def rotate_right(self, image_id):
+        c = self.connection.cursor()
+
+        self.images[image_id]['rotation'] = 0 if self.images[image_id]['rotation'] == 270 else self.images[image_id]['rotation'] + 90
+
+        # print(self.images[image_id]['rotation'], rotation)
+
+        c.execute("UPDATE images SET `rotation` = ? WHERE image_id = ?", (self.images[image_id]['rotation'], image_id))
 
         self.connection.commit()
 
