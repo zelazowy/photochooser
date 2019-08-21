@@ -73,6 +73,10 @@ class App(QtWidgets.QMainWindow):
         prev_action.triggered.connect(self.prepare_directory)
         toolbar.addAction(prev_action)
 
+        first_action = QtWidgets.QAction(QtGui.QIcon("../assets/first.png"), 'First image', self)
+        first_action.triggered.connect(self.first_image)
+        toolbar.addAction(first_action)
+
         prev_action = QtWidgets.QAction(QtGui.QIcon("../assets/prev.png"), 'Previous image', self)
         prev_action.triggered.connect(functools.partial(self.change_image, DIRECTION_PREV))
         toolbar.addAction(prev_action)
@@ -80,6 +84,14 @@ class App(QtWidgets.QMainWindow):
         next_action = QtWidgets.QAction(QtGui.QIcon("../assets/next.png"), 'Next image', self)
         next_action.triggered.connect(functools.partial(self.change_image, DIRECTION_NEXT))
         toolbar.addAction(next_action)
+
+        rotate_left = QtWidgets.QAction(QtGui.QIcon("../assets/rotate_left.png"), 'Rotate left', self)
+        rotate_left.triggered.connect(self.rotate_left)
+        toolbar.addAction(rotate_left)
+
+        rotate_right = QtWidgets.QAction(QtGui.QIcon("../assets/rotate_right.png"), 'Rotate right', self)
+        rotate_right.triggered.connect(self.rotate_right)
+        toolbar.addAction(rotate_right)
 
         love_action = QtWidgets.QAction(QtGui.QIcon("../assets/love.png"), 'Love image', self)
         love_action.triggered.connect(self.love_image)

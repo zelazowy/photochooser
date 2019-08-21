@@ -4,7 +4,7 @@ from photochooser.app import *
 
 class ImageManagerTest(unittest.TestCase):
     def setUp(self):
-        self.image_manager = App()
+        self.image_manager = FilesManager()
         self.image_manager.images = ["1.jpg", "2.jpg", "3.jpg"]
 
     def test_change_image_first(self):
