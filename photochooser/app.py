@@ -140,8 +140,7 @@ class App(QtWidgets.QMainWindow):
         pixmap = pixmap.scaled(
             min(self.app_width, pixmap.width()),
             min(self.app_height, pixmap.height()),
-            QtCore.Qt.KeepAspectRatio,
-            QtCore.Qt.FastTransformation
+            QtCore.Qt.KeepAspectRatio
         )
 
         return pixmap
@@ -208,6 +207,12 @@ class App(QtWidgets.QMainWindow):
         )
 
         painter.end()
+
+    def resizeEvent(self, QResizeEvent):
+        self.app_width = self.width()
+        self.app_height = self.height()
+
+        self.refresh()
 
     def center_position(self, width, height):
         rect = QtCore.QRect()
