@@ -140,7 +140,8 @@ class App(QtWidgets.QMainWindow):
         pixmap = pixmap.scaled(
             min(self.app_width, pixmap.width()),
             min(self.app_height, pixmap.height()),
-            QtCore.Qt.KeepAspectRatio
+            QtCore.Qt.KeepAspectRatio,
+            QtCore.Qt.FastTransformation
         )
 
         return pixmap
@@ -190,31 +191,21 @@ class App(QtWidgets.QMainWindow):
         pixmap = self.prepare_image(self.image_id)
         painter.drawPixmap(self.center_position(pixmap.width(), pixmap.height()), pixmap)
 
-        if self.image_config.images[self.image_id]["status"] == self.image_config.STATUS_LOVED:
-            loved_icon = QtGui.QPixmap("../assets/love.png")
-        else:
-            loved_icon = QtGui.QPixmap("../assets/love_placeholder.png")
+        loved_icon = QtGui.QPixmap(
+            "../assets/love.png" if self.image_config.is_loved(self.image_id) else "../assets/love_placeholder.png"
+        )
+        painter.drawPixmap(
+            QtCore.QRect(10, self.app_height - 155, loved_icon.width(), loved_icon.height()),
+            loved_icon
+        )
 
-        rect = QtCore.QRect()
-        rect.setX(10)
-        rect.setY(self.app_height - 155)
-        rect.setWidth(loved_icon.width())
-        rect.setHeight(loved_icon.height())
-
-        painter.drawPixmap(rect, loved_icon)
-
-        if self.image_config.images[self.image_id]["status"] == self.image_config.STATUS_TRASHED:
-            trashed_icon = QtGui.QPixmap("../assets/trash.png")
-        else:
-            trashed_icon = QtGui.QPixmap("../assets/trash_placeholder.png")
-
-        rect = QtCore.QRect()
-        rect.setX(10)
-        rect.setY(self.app_height - 90)
-        rect.setWidth(trashed_icon.width())
-        rect.setHeight(trashed_icon.height())
-
-        painter.drawPixmap(rect, trashed_icon)
+        trashed_icon = QtGui.QPixmap(
+            "../assets/trash.png" if self.image_config.is_trashed(self.image_id) else "../assets/trash_placeholder.png"
+        )
+        painter.drawPixmap(
+            QtCore.QRect(10, self.app_height - 90, trashed_icon.width(), trashed_icon.height()),
+            trashed_icon
+        )
 
         painter.end()
 

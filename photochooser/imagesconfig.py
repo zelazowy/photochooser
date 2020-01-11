@@ -124,6 +124,12 @@ class ImagesConfig(object):
 
         self.images[image_id]["status"] = status
 
+    def is_loved(self, image_id):
+        return self.images[image_id]["status"] == self.STATUS_LOVED
+
+    def is_trashed(self, image_id):
+        return self.images[image_id]["status"] == self.STATUS_TRASHED
+
     def mark_as_moved(self, image_id):
         c = self.connection.cursor()
 
