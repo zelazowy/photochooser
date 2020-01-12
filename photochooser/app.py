@@ -1,6 +1,10 @@
 from PyQt5 import QtGui, QtWidgets, QtCore
 from imagesconfig import ImagesConfig
-import sys, functools
+import sys, functools, os
+
+VERSION = "0.3.0"
+
+CURRENT_DIR = os.path.dirname(__file__)
 
 DIRECTION_PREV = "prev"
 DIRECTION_NEXT = "next"
@@ -23,7 +27,7 @@ class App(QtWidgets.QMainWindow):
 
         self.label = QtWidgets.QLabel(self)
 
-        self.setWindowTitle("Photochooser v0.2.2")
+        self.setWindowTitle("Photochooser " + VERSION)
         self.showMaximized()
 
         self.app_width = self.width()
@@ -40,7 +44,7 @@ class App(QtWidgets.QMainWindow):
 
         # displays photochooser logo
         # todo add special action for welcome screen
-        # self.filename = "../assets/photochooser_camera.png"
+        # self.filename = os.path.join(CURRENT_DIR, "assets/photochooser_camera.png")
         # self.refresh()
 
         # sets focus on main window
@@ -70,43 +74,43 @@ class App(QtWidgets.QMainWindow):
         # here goes the left one
         toolbar.addWidget(left_spacer)
 
-        prev_action = QtWidgets.QAction(QtGui.QIcon("../assets/open.png"), 'Open directory', self)
+        prev_action = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/open.png")), 'Open directory', self)
         prev_action.triggered.connect(self.prepare_directory)
         toolbar.addAction(prev_action)
 
-        first_action = QtWidgets.QAction(QtGui.QIcon("../assets/first.png"), 'First image', self)
+        first_action = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/first.png")), 'First image', self)
         first_action.triggered.connect(self.first_image)
         toolbar.addAction(first_action)
 
-        prev_action = QtWidgets.QAction(QtGui.QIcon("../assets/prev.png"), 'Previous image', self)
+        prev_action = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/prev.png")), 'Previous image', self)
         prev_action.triggered.connect(functools.partial(self.change_image, DIRECTION_PREV))
         toolbar.addAction(prev_action)
 
-        next_action = QtWidgets.QAction(QtGui.QIcon("../assets/next.png"), 'Next image', self)
+        next_action = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/next.png")), 'Next image', self)
         next_action.triggered.connect(functools.partial(self.change_image, DIRECTION_NEXT))
         toolbar.addAction(next_action)
 
-        rotate_left = QtWidgets.QAction(QtGui.QIcon("../assets/rotate_left.png"), 'Rotate left', self)
+        rotate_left = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/rotate_left.png")), 'Rotate left', self)
         rotate_left.triggered.connect(self.rotate_left)
         toolbar.addAction(rotate_left)
 
-        rotate_right = QtWidgets.QAction(QtGui.QIcon("../assets/rotate_right.png"), 'Rotate right', self)
+        rotate_right = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/rotate_right.png")), 'Rotate right', self)
         rotate_right.triggered.connect(self.rotate_right)
         toolbar.addAction(rotate_right)
 
-        love_action = QtWidgets.QAction(QtGui.QIcon("../assets/love.png"), 'Love image', self)
+        love_action = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/love.png")), 'Love image', self)
         love_action.triggered.connect(self.love_image)
         toolbar.addAction(love_action)
 
-        delete_action = QtWidgets.QAction(QtGui.QIcon("../assets/trash.png"), 'Move to trash', self)
+        delete_action = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/trash.png")), 'Move to trash', self)
         delete_action.triggered.connect(self.trash_image)
         toolbar.addAction(delete_action)
 
-        delete_action = QtWidgets.QAction(QtGui.QIcon("../assets/save.png"), 'Apply changes', self)
+        delete_action = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/save.png")), 'Apply changes', self)
         delete_action.triggered.connect(self.apply)
         toolbar.addAction(delete_action)
 
-        exit_action = QtWidgets.QAction(QtGui.QIcon("../assets/close.png"), 'Exit', self)
+        exit_action = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/close.png")), 'Exit', self)
         exit_action.setShortcut('Ctrl+Q')
         exit_action.triggered.connect(QtWidgets.qApp.quit)
         toolbar.addAction(exit_action)
@@ -191,7 +195,7 @@ class App(QtWidgets.QMainWindow):
         painter.drawPixmap(self.center_position(pixmap.width(), pixmap.height()), pixmap)
 
         loved_icon = QtGui.QPixmap(
-            "../assets/love.png" if self.image_config.is_loved(self.image_id) else "../assets/love_placeholder.png"
+            os.path.join(CURRENT_DIR, "assets/love.png" if self.image_config.is_loved(self.image_id) else "assets/love_placeholder.png")
         )
         painter.drawPixmap(
             QtCore.QRect(10, self.app_height - 155, loved_icon.width(), loved_icon.height()),
@@ -199,7 +203,7 @@ class App(QtWidgets.QMainWindow):
         )
 
         trashed_icon = QtGui.QPixmap(
-            "../assets/trash.png" if self.image_config.is_trashed(self.image_id) else "../assets/trash_placeholder.png"
+            os.path.join(CURRENT_DIR, "assets/trash.png" if self.image_config.is_trashed(self.image_id) else "assets/trash_placeholder.png")
         )
         painter.drawPixmap(
             QtCore.QRect(10, self.app_height - 90, trashed_icon.width(), trashed_icon.height()),
@@ -283,7 +287,11 @@ class App(QtWidgets.QMainWindow):
         self.update()
 
 
-if __name__ == "__main__":
+def app():
     app = QtWidgets.QApplication(sys.argv)
-    photochooser = App()
+    App()
     sys.exit(app.exec_())
+
+
+if __name__ == "__main__":
+    app()
