@@ -1,6 +1,9 @@
-from PyQt5 import QtGui, QtWidgets, QtCore
+import functools
+import os
+import sys
+from PyQt6 import QtGui, QtWidgets, QtCore
+
 from imagesconfig import ImagesConfig
-import sys, functools, os
 
 VERSION = "0.3.0"
 
@@ -33,7 +36,7 @@ class App(QtWidgets.QMainWindow):
         self.app_width = self.width()
         self.app_height = self.height()
 
-        self.label.setAlignment(QtCore.Qt.AlignCenter)
+        self.label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.label.setFixedWidth(self.app_width)
         self.label.setFixedHeight(self.app_height)
 
@@ -51,7 +54,7 @@ class App(QtWidgets.QMainWindow):
         self.activateWindow()
 
     def init_menubar(self):
-        open_action = QtWidgets.QAction(self)
+        open_action = QtGui.QAction(self)
         open_action.setText("Open directory")
         # open_action.setShortcut('Ctrl+O')
         open_action.triggered.connect(self.prepare_directory)
@@ -65,54 +68,54 @@ class App(QtWidgets.QMainWindow):
 
         # spacer widget for left
         left_spacer = QtWidgets.QWidget()
-        left_spacer.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        left_spacer.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
         # spacer widget for right
         # you can't add the same widget to both left and right. you need two different widgets.
         right_spacer = QtWidgets.QWidget()
-        right_spacer.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        right_spacer.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
 
         # here goes the left one
         toolbar.addWidget(left_spacer)
 
-        prev_action = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/open.png")), 'Open directory', self)
+        prev_action = QtGui.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/open.png")), 'Open directory', self)
         prev_action.triggered.connect(self.prepare_directory)
         toolbar.addAction(prev_action)
 
-        first_action = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/first.png")), 'First image', self)
+        first_action = QtGui.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/first.png")), 'First image', self)
         first_action.triggered.connect(self.first_image)
         toolbar.addAction(first_action)
 
-        prev_action = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/prev.png")), 'Previous image', self)
+        prev_action = QtGui.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/prev.png")), 'Previous image', self)
         prev_action.triggered.connect(functools.partial(self.change_image, DIRECTION_PREV))
         toolbar.addAction(prev_action)
 
-        next_action = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/next.png")), 'Next image', self)
+        next_action = QtGui.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/next.png")), 'Next image', self)
         next_action.triggered.connect(functools.partial(self.change_image, DIRECTION_NEXT))
         toolbar.addAction(next_action)
 
-        rotate_left = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/rotate_left.png")), 'Rotate left', self)
+        rotate_left = QtGui.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/rotate_left.png")), 'Rotate left', self)
         rotate_left.triggered.connect(self.rotate_left)
         toolbar.addAction(rotate_left)
 
-        rotate_right = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/rotate_right.png")), 'Rotate right', self)
+        rotate_right = QtGui.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/rotate_right.png")), 'Rotate right', self)
         rotate_right.triggered.connect(self.rotate_right)
         toolbar.addAction(rotate_right)
 
-        love_action = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/love.png")), 'Love image', self)
+        love_action = QtGui.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/love.png")), 'Love image', self)
         love_action.triggered.connect(self.love_image)
         toolbar.addAction(love_action)
 
-        delete_action = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/trash.png")), 'Move to trash', self)
+        delete_action = QtGui.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/trash.png")), 'Move to trash', self)
         delete_action.triggered.connect(self.trash_image)
         toolbar.addAction(delete_action)
 
-        delete_action = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/save.png")), 'Apply changes', self)
+        delete_action = QtGui.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/save.png")), 'Apply changes', self)
         delete_action.triggered.connect(self.apply)
         toolbar.addAction(delete_action)
 
-        exit_action = QtWidgets.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/close.png")), 'Exit', self)
+        exit_action = QtGui.QAction(QtGui.QIcon(os.path.join(CURRENT_DIR, "assets/close.png")), 'Exit', self)
         exit_action.setShortcut('Ctrl+Q')
-        exit_action.triggered.connect(QtWidgets.qApp.quit)
+        exit_action.triggered.connect(QtCore.QCoreApplication.quit)
         toolbar.addAction(exit_action)
 
         # here goes the left one
@@ -144,7 +147,7 @@ class App(QtWidgets.QMainWindow):
         pixmap = pixmap.scaled(
             min(self.app_width, pixmap.width()),
             min(self.app_height, pixmap.height()),
-            QtCore.Qt.KeepAspectRatio
+            QtCore.Qt.AspectRatioMode.KeepAspectRatio
         )
 
         return pixmap
@@ -160,27 +163,27 @@ class App(QtWidgets.QMainWindow):
     # Decides what to do when specific keys are pressed
     def keyPressEvent(self, e):
         key = e.key()
-        if key == QtCore.Qt.Key_Right:
+        if key == QtCore.Qt.Key.Key_Right:
             self.change_image(direction=DIRECTION_NEXT)
-        elif key == QtCore.Qt.Key_Left:
+        elif key == QtCore.Qt.Key.Key_Left:
             self.change_image(direction=DIRECTION_PREV)
-        elif key == QtCore.Qt.Key_Up:
+        elif key == QtCore.Qt.Key.Key_Up:
             self.love_image()
-        elif key == QtCore.Qt.Key_Down:
+        elif key == QtCore.Qt.Key.Key_Down:
             self.trash_image()
-        elif key == QtCore.Qt.Key_BracketLeft:
+        elif key == QtCore.Qt.Key.Key_BracketLeft:
             self.rotate_left()
-        elif key == QtCore.Qt.Key_BracketRight:
+        elif key == QtCore.Qt.Key.Key_BracketRight:
             self.rotate_right()
-        elif key == QtCore.Qt.Key_F:
+        elif key == QtCore.Qt.Key.Key_F:
             self.first_image()
 
-        elif key == QtCore.Qt.Key_1:  # debug
+        elif key == QtCore.Qt.Key.Key_1:  # debug
             self.image_config.debug_statuses()
             return
-        elif key == QtCore.Qt.Key_0:
+        elif key == QtCore.Qt.Key.Key_0:
             self.image_config.apply()
-            QtWidgets.qApp.quit()
+            QtCore.QCoreApplication.quit()
             return
         else:
             return
@@ -220,8 +223,8 @@ class App(QtWidgets.QMainWindow):
 
     def center_position(self, width, height):
         rect = QtCore.QRect()
-        rect.setX(self.app_width / 2 - width / 2)
-        rect.setY(self.app_height / 2 - height / 2)
+        rect.setX(int(self.app_width / 2 - width / 2))
+        rect.setY(int(self.app_height / 2 - height / 2))
         rect.setWidth(width)
         rect.setHeight(height)
 
@@ -290,7 +293,7 @@ class App(QtWidgets.QMainWindow):
 def app():
     app = QtWidgets.QApplication(sys.argv)
     App()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":
